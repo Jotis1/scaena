@@ -1,0 +1,125 @@
+# Perfil del canal: la única fuente del contenido de Scaena (specs/channel-profile).
+# Las claves van en inglés; los textos son los del diseño aprobado en Claude Design.
+# Se valida al construir (`bun run validate-profile`).
+
+name: Jotis
+
+twitch:
+    login: jotis1
+
+youtube:
+    handle: "@jotis_1"
+
+tagline: Juegos a mi ritmo, sin prisa.
+
+description:
+    - Un canal para jugar sin reloj. Me paro a mirar el paisaje, vuelvo atrás por el cofre que me dejé y no cambio de zona hasta verla entera. Entre partida y partida, ratos de Just Chatting.
+    - Si te gusta ir con calma, quédate. Si tienes prisa, te entiendo, pero aquí no.
+
+# «Ajustes de partida»: filas fijas, sin controles.
+playSettings:
+    - title: Ver cada rincón
+      text: No cambio de zona hasta verla entera.
+    - title: Volver por el cofre
+      text: El que me dejé atrás.
+    - title: Modo historia
+      text: Nada de competitivos.
+    - title: Juegos de miedo
+      text: Aunque lo paso mal.
+    - title: Duración de cada juego
+      text: Lo que tenga que durar.
+
+# Franja habitual, no una cita. Sin `days` (monday…sunday), se muestra «Sin fijar».
+schedule:
+    start: "17:00"
+    end: "20:00"
+    zone: Hora peninsular
+
+streams:
+    - Juegos
+    - Just Chatting
+
+banner:
+    eyebrow: Juegos y Just Chatting en Twitch
+
+socials:
+    - network: twitch
+      text: El directo, cuando lo hay. El chat lo leo en voz alta.
+      url: https://twitch.tv/jotis1
+    - network: youtube
+      text: "El diario: directos resubidos y editados."
+      url: https://www.youtube.com/@jotis_1
+    # Sin `url` hasta tener la invitación: mientras tanto, Discord no se muestra.
+    - network: discord
+      text: Avisos y algo de charla.
+
+rules:
+    - Pórtate bien. Si no sabes cómo, la escuela sigue abierta.
+    - Nada de spam.
+    - "Mi canal, mis normas: lo que no me parezca bien, fuera. Si te parece injusto, hay más canales."
+
+panels:
+    - slug: de-que-va
+      title: De qué va
+      icon: info-circle
+      from: description
+    - slug: horario
+      title: Horario
+      icon: clock
+      paragraphs:
+          - Lo habitual, no una cita. Hay días sin directo y días en los que la partida se alarga.
+      rows: schedule
+    - slug: normas
+      title: Normas
+      icon: shield-tick
+      # Numeradas al pintar el panel: «1. Pórtate bien…».
+      from: rules
+    - slug: videos
+      title: Vídeos
+      icon: play
+      paragraphs:
+          - Los directos, resubidos enteros, y los editados. El diario de partidas, en YouTube.
+      action:
+          text: Ver en YouTube
+          url: https://www.youtube.com/@jotis_1
+    - slug: redes
+      title: Redes
+      icon: link-01
+      paragraphs:
+          - Para lo que pasa fuera del directo.
+      rows: socials
+
+scenes:
+    starting:
+        badge: Empezamos pronto
+        title: Ya casi
+        subtitle: Unos minutos y empezamos. Ve escribiendo, que el chat lo leo en voz alta.
+    brb:
+        badge: Pausa
+        title: Vuelvo enseguida
+        subtitle: Un momento y seguimos con la partida.
+    ending:
+        badge: Fin del directo
+        title: Hasta la próxima
+        subtitle: Gracias por pasarte. El directo queda en YouTube.
+    offline:
+        badge: Sin directo
+        title: Ahora no estoy
+        subtitle: Mientras tanto, los vídeos están en YouTube.
+
+# Frases por defecto de cada alerta; el estudio permite cambiarlas (se guardan en Redis).
+alerts:
+    follow: Gracias por seguir el canal.
+    sub: Gracias por suscribirte.
+    resub: "{meses} meses ya. Gracias por seguir aquí."
+    gift: "Ha regalado {cantidad} subs al chat. Gracias."
+    raid: "Llega con {espectadores} personas. Bienvenidas."
+    bits: "{bits} bits. Muchas gracias."
+
+camera:
+    name: Jotis
+
+chat:
+    # Usuarios cuyos mensajes no salen en el overlay (bots, por ejemplo). Los mensajes que empiezan por `!`
+    # tampoco salen.
+    hidden: []

@@ -1,0 +1,57 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.6.5/schema.json",
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/.next",
+			"!**/coverage",
+			"!**/test-results",
+			"!**/playwright-report",
+			"!next-env.d.ts",
+			"!openspec",
+			"!.claude",
+			"!**/*.generated.*",
+			"!lib/generated"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineWidth": 110
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"a11y": {
+				"useValidAriaRole": {
+					"level": "error",
+					"options": { "ignoreNonDom": true }
+				}
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "error"
+			}
+		}
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"semicolons": "always"
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	}
+}

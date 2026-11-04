@@ -1,0 +1,73 @@
+# Integración continua: en cada PR y en cada push a main. Mismo esquema que Regula: comprobaciones sin
+# navegador por un lado y Playwright por otro.
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches: [main]
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    checks:
+        name: Comprobaciones
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version-file: package.json
+            - run: bun install --frozen-lockfile
+            - name: Biome
+              run: bunx biome ci .
+            - name: Colores fuera de los tokens
+              run: bun run check:colors
+            - name: Tipos
+              run: bun run typecheck
+            - name: Tests unitarios
+              run: bun run test
+            - name: Build
+              run: bun run build
+
+    browser:
+        name: Navegador (Playwright)
+        runs-on: ubuntu-latest
+        # El estudio necesita sesiones de verdad: un Postgres con las migraciones aplicadas.
+        services:
+            postgres:
+                image: postgres:17
+                env:
+                    POSTGRES_PASSWORD: postgres
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        env:
+            E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version-file: package.json
+            - run: bun install --frozen-lockfile
+            - name: Migraciones
+              run: bunx prisma migrate deploy
+              env:
+                  DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+            - name: Chromium de Playwright
+              run: bunx playwright install --with-deps chromium
+            - name: Playwright
+              run: bun run test:e2e
+            - name: Resultados si algo falla
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: resultados-navegador
+                  path: test-results/
+                  retention-days: 7

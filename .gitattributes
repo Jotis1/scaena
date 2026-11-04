@@ -1,0 +1,3 @@
+# Siempre LF: Biome lo exige y los ficheros ya están así. Sin esto, core.autocrlf los pasaría a CRLF en Windows.
+* text=auto eol=lf
+*.png binary

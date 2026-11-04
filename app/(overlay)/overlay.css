@@ -1,0 +1,7 @@
+/* Solo pintan fondo las piezas: la página queda transparente para que OBS componga encima. */
+html,
+body {
+	margin: 0;
+	overflow: hidden;
+	background: transparent;
+}
