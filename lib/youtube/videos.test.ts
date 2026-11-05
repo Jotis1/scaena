@@ -40,6 +40,33 @@ const deps = (
 	now,
 });
 
+describe("cliente de YouTube con las respuestas reales de @jotis_1", () => {
+	it("saca los cuatro vídeos públicos, del más reciente al más antiguo, con duración y miniatura", async () => {
+		const y = fakeYouTube({ videos: F.REAL_VIDEOS.items, playlist: [F.REAL_PLAYLIST] });
+		const videos = await fetchVideos(deps(y.f), CHANNEL, HANDLE);
+		expect(videos.map((v) => [v.id, v.duration])).toEqual([
+			["zI2qmxGvITE", 3 * 3600 + 2 * 60 + 17],
+			["pHDDITe04a4", 7 * 60 + 18],
+			["golKyuuiUn0", 8 * 60 + 39],
+			["SmrBkrLmyAc", 6 * 60 + 44],
+		]);
+		expect(videos[0]).toMatchObject({
+			title: "YoruCraft #1 | Full VOD Twitch ft. Shir0",
+			publishedAt: "2024-04-03T22:16:40Z",
+			thumbnail: "https://i.ytimg.com/vi/zI2qmxGvITE/maxresdefault.jpg",
+		});
+	});
+
+	it("un directo ya emitido (con `liveStreamingDetails` y fin) entra en la lista", async () => {
+		const ended = F.REAL_VIDEOS.items.find((v) => v.id === "pHDDITe04a4") as {
+			liveStreamingDetails?: object;
+		};
+		expect(ended.liveStreamingDetails).toHaveProperty("actualEndTime");
+		const y = fakeYouTube({ videos: F.REAL_VIDEOS.items, playlist: [F.REAL_PLAYLIST] });
+		expect((await fetchVideos(deps(y.f), CHANNEL, HANDLE)).map((v) => v.id)).toContain("pHDDITe04a4");
+	});
+});
+
 describe("cliente de YouTube", () => {
 	it("busca la lista de subidas por handle y pasa la clave", async () => {
 		const urls: string[] = [];
@@ -53,7 +80,7 @@ describe("cliente de YouTube", () => {
 		expect(ch.origin + ch.pathname).toBe(`${API}/channels`);
 		expect(ch.searchParams.get("forHandle")).toBe("@jotis_1");
 		expect(ch.searchParams.get("key")).toBe("k");
-		expect(new URL(urls[1] ?? "").searchParams.get("playlistId")).toBe("UUjotis1aaaaaaaaaaaaaaaa");
+		expect(new URL(urls[1] ?? "").searchParams.get("playlistId")).toBe("UUc64u2L7fMMoXQ2OngYmVXQ");
 	});
 
 	it("quita privados, ocultos, eliminados y estrenos pendientes, y saca la duración", async () => {

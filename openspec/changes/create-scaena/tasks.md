@@ -110,7 +110,7 @@ Las reglas de regula.jotis.me se aplican a todas las tareas (design.md, decisió
 
 ## 8. Vídeos de YouTube (youtube-vods)
 
-- [ ] 8.1 Escribir el cliente de YouTube (`channels.list?forHandle` para la lista de subidas, `playlistItems.list` + `videos.list`) y el filtro de privados, ocultos, eliminados y estrenos pendientes, con duración. Verificar con tests sobre respuestas reales guardadas
+- [x] 8.1 Escribir el cliente de YouTube (`channels.list?forHandle` para la lista de subidas, `playlistItems.list` + `videos.list`) y el filtro de privados, ocultos, eliminados y estrenos pendientes, con duración. Verificar con tests sobre respuestas reales guardadas
 - [x] 8.2 Escribir la caché (frescura de 1 h, copia de respaldo, vacío si no hay nada) y la paginación de doce. Verificar con tests: una sola consulta en muchas lecturas dentro de la hora, respaldo ante cuota agotada y página 2 de 30 → vídeos 13 a 24
 - [x] 8.3 Escribir `lib/youtube/title` (`^(.+) - (.+) #(\d+)$`: directo resubido con juego y número; si no, editado) y el filtro por tipo antes de paginar. Verificar con tests de todos los escenarios de la spec:
   - "La ciudad que nunca duerme - Cyberpunk 2077 #1";

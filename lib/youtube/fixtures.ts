@@ -1,26 +1,17 @@
-// Respuestas de YouTube Data API v3 con la forma de su documentación (channels.list, playlistItems.list y
-// videos.list), recortadas a los campos que pide Scaena. PENDIENTE: cambiarlas por respuestas capturadas del canal
-// @jotis_1 cuando haya clave de la API (tarea 8.1).
+// Respuestas de YouTube Data API v3 para los tests. Las de `responses/` son reales, capturadas del canal @jotis_1
+// el 5 nov 2026 (channels.list, playlistItems.list y videos.list). Para los casos que el canal no tiene (privados,
+// ocultos, estrenos pendientes), `video()` parte de un vídeo real y le cambia solo lo necesario.
+import CHANNELS_RESPONSE from "./responses/channels.json";
+import PLAYLIST_RESPONSE from "./responses/playlistItems.json";
+import VIDEOS_RESPONSE from "./responses/videos.json";
 
-export const CHANNELS = {
-	kind: "youtube#channelListResponse",
-	pageInfo: { totalResults: 1, resultsPerPage: 5 },
-	items: [
-		{
-			kind: "youtube#channel",
-			id: "UCjotis1aaaaaaaaaaaaaaaa",
-			contentDetails: { relatedPlaylists: { likes: "", uploads: "UUjotis1aaaaaaaaaaaaaaaa" } },
-		},
-	],
-};
+export const CHANNELS = CHANNELS_RESPONSE;
+export const REAL_PLAYLIST = PLAYLIST_RESPONSE;
+export const REAL_VIDEOS = VIDEOS_RESPONSE;
 
-const thumbs = (id: string) => ({
-	default: { url: `https://i.ytimg.com/vi/${id}/default.jpg`, width: 120, height: 90 },
-	medium: { url: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, width: 320, height: 180 },
-	high: { url: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, width: 480, height: 360 },
-	maxres: { url: `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, width: 1280, height: 720 },
-});
+type RealVideo = (typeof VIDEOS_RESPONSE.items)[number];
 
+/** Un vídeo real (el primero de la respuesta) con otro id y lo que se cambie. */
 export function video(
 	id: string,
 	over: {
@@ -32,33 +23,47 @@ export function video(
 		live?: { actualEndTime?: string; scheduledStartTime?: string };
 	} = {},
 ) {
-	return {
-		kind: "youtube#video",
+	const { liveStreamingDetails: _live, ...base } = structuredClone(
+		VIDEOS_RESPONSE.items[0],
+	) as RealVideo & {
+		liveStreamingDetails?: unknown;
+	};
+	const thumbs = Object.fromEntries(
+		Object.entries(base.snippet.thumbnails).map(([k, t]) => [
+			k,
+			{ ...t, url: t.url.replace(base.id, id) },
+		]),
+	) as RealVideo["snippet"]["thumbnails"];
+	const v: Omit<RealVideo, "liveStreamingDetails"> & { liveStreamingDetails?: typeof over.live } = {
+		...base,
 		id,
 		snippet: {
-			publishedAt: over.publishedAt ?? "2026-10-29T19:30:00Z",
-			channelId: "UCjotis1aaaaaaaaaaaaaaaa",
+			...base.snippet,
 			title: over.title ?? `Vídeo ${id}`,
-			thumbnails: thumbs(id),
+			publishedAt: over.publishedAt ?? "2026-10-29T19:30:00Z",
 			liveBroadcastContent: over.liveBroadcastContent ?? "none",
+			thumbnails: thumbs,
 		},
-		contentDetails: { duration: over.duration ?? "PT1H2M5S", definition: "hd" },
-		status: {
-			uploadStatus: "processed",
-			privacyStatus: over.privacyStatus ?? "public",
-			embeddable: true,
-		},
-		...(over.live ? { liveStreamingDetails: over.live } : {}),
+		contentDetails: { ...base.contentDetails, duration: over.duration ?? "PT1H2M5S" },
+		status: { ...base.status, privacyStatus: over.privacyStatus ?? "public" },
 	};
+	if (over.live) v.liveStreamingDetails = over.live;
+	return v;
 }
 
+/** Página de `playlistItems.list` con la forma de la real. */
 export const playlistItems = (ids: string[], nextPageToken?: string) => ({
-	kind: "youtube#playlistItemListResponse",
-	items: ids.map((videoId) => ({ kind: "youtube#playlistItem", contentDetails: { videoId } })),
-	...(nextPageToken ? { nextPageToken } : {}),
+	...PLAYLIST_RESPONSE,
+	items: ids.map((videoId) => ({
+		...PLAYLIST_RESPONSE.items[0],
+		id: `item-${videoId}`,
+		contentDetails: { videoId },
+	})),
+	nextPageToken,
 	pageInfo: { totalResults: ids.length, resultsPerPage: 50 },
 });
 
+/** Cuota agotada. No se puede capturar sin agotarla: es la forma que documenta Google. */
 export const QUOTA_EXCEEDED = {
 	error: {
 		code: 403,
