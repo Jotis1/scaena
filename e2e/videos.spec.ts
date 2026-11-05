@@ -71,15 +71,29 @@ test("pulsar una tarjeta la pone arriba, en la URL, y empieza a reproducirse", a
 
 test("el filtro y la paginación cambian la URL y cuentan solo lo filtrado", async ({ page }) => {
 	await page.goto("/videos");
-	await expect(page.getByText("Página 1 de 3")).toBeVisible();
+	// Tres páginas en todos: la 1 marcada y ninguna 4.
+	await expect(
+		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 1" }),
+	).toHaveAttribute("aria-current", "page");
+	await expect(
+		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 3" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 4" }),
+	).toHaveCount(0);
 	await page.getByRole("tab", { name: "Directos" }).click();
 	await expect(page).toHaveURL(/\/videos\?type=live$/);
-	await expect(page.getByText("Página 1 de 2")).toBeVisible();
+	await expect(
+		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 2" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 3" }),
+	).toHaveCount(0);
 	await expect(page.getByText("Editado", { exact: true })).toHaveCount(0);
-	await page.getByRole("link", { name: "Anteriores" }).click();
+	await page.getByRole("button", { name: "Anteriores" }).click();
 	await expect(page).toHaveURL(/\/videos\?type=live&page=2$/);
 	await expect(page.locator('a[href^="/videos?"][href*="v=vid"]')).toHaveCount(3);
-	await page.getByRole("link", { name: "Más recientes" }).click();
+	await page.getByRole("button", { name: "Más recientes" }).click();
 	await expect(page).toHaveURL(/\/videos\?type=live$/);
 });
 

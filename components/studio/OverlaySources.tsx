@@ -9,6 +9,8 @@ import {
 	type IconName,
 	Input,
 	Modal,
+	PageHeader,
+	SectionHeader,
 	Select,
 	StreamAlert,
 	StreamEvents,
@@ -81,22 +83,23 @@ export function OverlaySources(p: OverlaySourcesProps) {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div className="flex flex-col gap-1">
-				<h1 className="font-display text-display-sm font-semibold text-primary">Overlays</h1>
-				<p className="max-w-180 text-md text-tertiary">
-					Copia la URL y pégala en OBS como fuente de navegador. El fondo ya viene transparente.
-				</p>
-			</div>
+			<PageHeader
+				title="Overlays"
+				description="Copia la URL y pégala en OBS como fuente de navegador. El fondo ya viene transparente."
+				divider={false}
+			/>
 
 			<div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] gap-4">
 				<TokenCard token={token} onRotated={setToken} />
 				<TestAlertsCard />
 			</div>
 
-			<div className="flex items-baseline justify-between gap-3 pt-2">
-				<h2 className="text-lg font-semibold text-primary">Fuentes de navegador</h2>
-				<span className="text-sm text-tertiary">6 piezas y 6 escenas</span>
-			</div>
+			<SectionHeader
+				title="Fuentes de navegador"
+				divider={false}
+				className="pt-2"
+				actions={<span className="text-sm text-tertiary">6 piezas y 6 escenas</span>}
+			/>
 
 			{card("chat", {
 				title: "Chat",

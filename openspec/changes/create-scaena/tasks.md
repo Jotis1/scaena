@@ -169,6 +169,7 @@ Las reglas de regula.jotis.me se aplican a todas las tareas (design.md, decisió
   - `panel-normas.png` mide 640px de ancho y `banner.png` 1200×480;
   - el `.zip` trae todos los PNG;
   - cada PNG difiere de una captura de Chromium del mismo nodo por debajo del umbral
+- [x] 10.6 Añadir en Overlays y Recursos el aviso de eventos sin conectar, revocados o sin dar de alta, con botón a `/studio/connection`, y sin aviso si Twitch no responde (fuera del diseño aprobado, decidido el 5 nov 2026). Verificar con tests de Vitest de los cuatro casos
 
 ## 11. Integración y puesta en marcha
 

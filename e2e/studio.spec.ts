@@ -33,6 +33,18 @@ test.describe("armazón", () => {
 		await expect(page.getByRole("combobox", { name: /canal/i })).toHaveCount(0);
 	});
 
+	test("la barra lateral es fija: la cuenta y «Salir» se ven sin bajar, también al final de la página", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 800 });
+		await page.goto("/studio/overlays");
+		const logout = page.getByRole("button", { name: "Salir" });
+		await expect(logout).toBeInViewport();
+		await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+		await expect(logout).toBeInViewport();
+		await expect(page.getByText("Cuenta de Twitch")).toBeInViewport();
+	});
+
 	test("«Salir» cierra la sesión", async ({ page }) => {
 		await page.goto("/studio/overlays");
 		await page.getByRole("button", { name: "Salir" }).click();

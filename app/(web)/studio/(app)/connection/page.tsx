@@ -1,18 +1,20 @@
-import { Alert, AvatarLabel, Badge, FeaturedIcon } from "@jotis-me/react";
+import { Alert, AvatarLabel, Badge, FeaturedIcon, PageHeader, Table } from "@jotis-me/react";
 import type { Metadata } from "next";
 import { ConnectButton, DisconnectButton, ReactivateButton } from "@/components/studio/ConnectionActions";
 import { TWITCH_SCOPES } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { activeCount, connectionView, revokedNotice, SUBSCRIPTION_LABELS } from "@/lib/studio/connection";
 import { requirePageSession } from "@/lib/studio/session";
-import { type ConnectionStatus, connectionStatus } from "@/lib/twitch/eventsub/subscriptions";
+import {
+	type ConnectionStatus,
+	connectionStatus,
+	type SubscriptionRow,
+} from "@/lib/twitch/eventsub/subscriptions";
 import { eventSubDeps } from "@/lib/twitch/server";
 import { connectEvents, disconnectEvents } from "./actions";
 
 export const metadata: Metadata = { title: "Conexión · Estudio · Scaena", robots: { index: false } };
 export const dynamic = "force-dynamic";
-
-const COLUMNS = "grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px] gap-4 px-6";
 
 // Conexión con Twitch (diseño: «Conexión», sin conectar, conectado y revocada; specs/twitch-events).
 export default async function ConnectionPage() {
@@ -26,15 +28,11 @@ export default async function ConnectionPage() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div className="flex flex-col gap-1">
-				<h1 className="font-display text-display-sm font-semibold text-primary">
-					Conexión con Twitch
-				</h1>
-				<p className="max-w-180 text-md text-tertiary">
-					Con ella, Scaena recibe los eventos del canal (follows, subs, raids, bits) y se los pasa a
-					los overlays.
-				</p>
-			</div>
+			<PageHeader
+				title="Conexión con Twitch"
+				description="Con ella, Scaena recibe los eventos del canal (follows, subs, raids, bits) y se los pasa a los overlays."
+				divider={false}
+			/>
 			{status ? <Status status={status} name={session.name} /> : <Unreachable />}
 		</div>
 	);
@@ -97,72 +95,59 @@ function Status({ status, name }: { status: ConnectionStatus; name: string }) {
 				<DisconnectButton action={disconnectEvents} />
 			</section>
 
-			<section aria-labelledby="subs" className="overflow-hidden rounded-xl border border-secondary">
-				<div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-secondary px-6 py-5">
-					<h2 id="subs" className="text-lg font-semibold text-primary">
-						Suscripciones de eventos
-					</h2>
-					<Badge color="gray" type="pill" size="sm">
-						{activeCount(status.rows)}
-					</Badge>
-					<span className="basis-full text-sm text-tertiary">
-						Lo que Twitch le cuenta a Scaena. Si una se cae, su overlay deja de enterarse.
-					</span>
-				</div>
-				<table aria-label="Suscripciones de eventos" className="flex flex-col">
-					<thead>
-						<tr
-							className={`${COLUMNS} border-b border-secondary bg-secondary py-3 text-left text-xs font-medium text-tertiary`}
-						>
-							<th scope="col">Evento</th>
-							<th scope="col">Tipo en Twitch</th>
-							<th scope="col">Estado</th>
-							<th scope="col">
-								<span className="sr-only">Acción</span>
-							</th>
-						</tr>
-					</thead>
-					<tbody>
-						{status.rows.map((r, i) => (
-							<tr
-								key={r.type}
-								className={`${COLUMNS} items-center border-b border-secondary py-3.5 text-sm last:border-b-0`}
-							>
-								<td className="font-medium text-primary">{SUBSCRIPTION_LABELS[r.type]}</td>
-								<td className="font-mono text-[13px] text-tertiary">{r.type}</td>
-								<td>
-									{r.state === "enabled" ? (
-										<Badge color="success" type="pill" size="sm" dot>
-											Activa
-										</Badge>
-									) : r.state === "pending" ? (
-										<Badge color="warning" type="pill" size="sm" dot>
-											Verificando
-										</Badge>
-									) : r.state === "revoked" ? (
-										<Badge color="error" type="pill" size="sm" dot>
-											Revocada
-										</Badge>
-									) : (
-										<Badge color="gray" type="pill" size="sm" dot>
-											Sin dar de alta
-										</Badge>
-									)}
-								</td>
-								<td className="flex justify-end">
-									{r.state === "revoked" || r.state === "missing" ? (
-										// Un solo botón principal por vista: el de la primera fila rota.
-										<ReactivateButton
-											action={connectEvents}
-											primary={i === firstBroken}
-										/>
-									) : null}
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</section>
+			<Table
+				title="Suscripciones de eventos"
+				count={activeCount(status.rows)}
+				description="Lo que Twitch le cuenta a Scaena. Si una se cae, su overlay deja de enterarse."
+				columns={[
+					{ key: "label", label: "Evento", primary: true },
+					{
+						key: "type",
+						label: "Tipo en Twitch",
+						render: (r: Row) => <span className="font-mono text-[13px]">{r.type}</span>,
+					},
+					{ key: "state", label: "Estado", render: (r: Row) => <StateBadge state={r.state} /> },
+					{
+						key: "action",
+						label: <span className="sr-only">Acción</span>,
+						align: "right",
+						render: (r: Row) =>
+							r.state === "revoked" || r.state === "missing" ? (
+								// Un solo botón principal por vista: el de la primera fila rota.
+								<ReactivateButton action={connectEvents} primary={r.index === firstBroken} />
+							) : null,
+					},
+				]}
+				rows={status.rows.map((r, index) => ({ ...r, index, label: SUBSCRIPTION_LABELS[r.type] }))}
+			/>
 		</div>
+	);
+}
+
+type Row = SubscriptionRow & { index: number; label: string };
+
+function StateBadge({ state }: { state: SubscriptionRow["state"] }) {
+	if (state === "enabled")
+		return (
+			<Badge color="success" type="pill" size="sm" dot>
+				Activa
+			</Badge>
+		);
+	if (state === "pending")
+		return (
+			<Badge color="warning" type="pill" size="sm" dot>
+				Verificando
+			</Badge>
+		);
+	if (state === "revoked")
+		return (
+			<Badge color="error" type="pill" size="sm" dot>
+				Revocada
+			</Badge>
+		);
+	return (
+		<Badge color="gray" type="pill" size="sm" dot>
+			Sin dar de alta
+		</Badge>
 	);
 }

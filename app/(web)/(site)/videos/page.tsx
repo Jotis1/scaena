@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { VideoCard } from "@/components/web/VideoCard";
 import { ClickToPlay } from "@/components/web/videos/ClickToPlay";
 import { RetryButton } from "@/components/web/videos/RetryButton";
+import { VideoPagination } from "@/components/web/videos/VideoPagination";
 import { VideoTabs } from "@/components/web/videos/VideoTabs";
 import { formatDate, formatDuration } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
@@ -170,42 +171,7 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
 								/>
 							))}
 						</div>
-						<nav
-							aria-label="Paginación"
-							className="flex items-center justify-between gap-3 border-t border-secondary pt-5"
-						>
-							{list.page > 1 ? (
-								<Button
-									hierarchy="secondary"
-									size="sm"
-									href={videosHref({ type, page: list.page - 1 })}
-									iconLeading="arrow-left"
-								>
-									Más recientes
-								</Button>
-							) : (
-								<Button hierarchy="secondary" size="sm" disabled iconLeading="arrow-left">
-									Más recientes
-								</Button>
-							)}
-							<span className="text-sm text-tertiary">
-								Página {list.page} de {list.pages}
-							</span>
-							{list.page < list.pages ? (
-								<Button
-									hierarchy="secondary"
-									size="sm"
-									href={videosHref({ type, page: list.page + 1 })}
-									iconTrailing="arrow-right"
-								>
-									Anteriores
-								</Button>
-							) : (
-								<Button hierarchy="secondary" size="sm" disabled iconTrailing="arrow-right">
-									Anteriores
-								</Button>
-							)}
-						</nav>
+						<VideoPagination page={list.page} pages={list.pages} type={type} />
 					</section>
 				</div>
 			)}

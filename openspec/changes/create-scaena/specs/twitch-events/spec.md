@@ -17,6 +17,25 @@ La entrada al estudio con Twitch SHALL pedir los permisos mínimos para leer fol
 - **WHEN** se repite la conexión con las suscripciones ya activas
 - **THEN** el sistema no crea suscripciones repetidas
 
+### Requirement: Aviso de eventos sin conectar
+Mientras los eventos del canal no lleguen del todo (sin conectar, con alguna suscripción revocada o sin dar de alta), las páginas de overlays y de recursos del estudio SHALL mostrar arriba un aviso que diga qué pasa y lleve a la página de conexión. El aviso MUST NOT aparecer si todas las suscripciones están activas o verificándose, ni si Twitch no responde al consultarlas.
+
+#### Scenario: Eventos sin conectar
+- **WHEN** el dueño del canal abre la página de overlays sin haber conectado los eventos
+- **THEN** ve el aviso "Eventos sin conectar" con el botón "Conectar eventos", que lleva a la página de conexión
+
+#### Scenario: Suscripción revocada
+- **WHEN** Twitch ha revocado la suscripción de raids
+- **THEN** la página de recursos muestra el mismo aviso de revocación que la de conexión, con el botón "Revisar la conexión"
+
+#### Scenario: Todo conectado
+- **WHEN** las ocho suscripciones están activas
+- **THEN** no aparece ningún aviso
+
+#### Scenario: Twitch no responde
+- **WHEN** Twitch no contesta al consultar las suscripciones
+- **THEN** la página carga sin aviso
+
 ### Requirement: Verificación de la firma
 El sistema MUST aceptar una notificación de Twitch solo si su firma es válida con el secreto configurado y su marca de tiempo no tiene más de diez minutos; en otro caso MUST rechazarla sin procesarla.
 

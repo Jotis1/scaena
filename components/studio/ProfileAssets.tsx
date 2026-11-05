@@ -1,6 +1,15 @@
 "use client";
 
-import { Badge, Button, ChannelBanner, ChannelPanel, type IconName, Input } from "@jotis-me/react";
+import {
+	Badge,
+	Button,
+	ChannelBanner,
+	ChannelPanel,
+	type IconName,
+	Input,
+	PageHeader,
+	SectionHeader,
+} from "@jotis-me/react";
 import { zipSync } from "fflate";
 import { domToBlob } from "modern-screenshot";
 import { type ReactNode, useRef, useState } from "react";
@@ -103,24 +112,22 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div className="flex flex-wrap items-end justify-between gap-4">
-				<div className="flex flex-col gap-1">
-					<h1 className="font-display text-display-sm font-semibold text-primary">Recursos</h1>
-					<p className="max-w-180 text-md text-tertiary">
-						Paneles y banner del perfil de Twitch. Se exportan en PNG al doble de tamaño para que
-						se vean nítidos.
-					</p>
-				</div>
-				<Button
-					hierarchy="primary"
-					size="md"
-					iconLeading="download-01"
-					loading={busy === "all"}
-					onClick={exportAll}
-				>
-					Exportar todo
-				</Button>
-			</div>
+			<PageHeader
+				title="Recursos"
+				description="Paneles y banner del perfil de Twitch. Se exportan en PNG al doble de tamaño para que se vean nítidos."
+				divider={false}
+				actions={
+					<Button
+						hierarchy="primary"
+						size="md"
+						iconLeading="download-01"
+						loading={busy === "all"}
+						onClick={exportAll}
+					>
+						Exportar todo
+					</Button>
+				}
+			/>
 			{error ? (
 				<p role="alert" className="text-sm text-error-primary">
 					{error}
@@ -141,7 +148,7 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 				busy={busy === banner.file}
 			/>
 
-			<h2 className="mt-2 text-lg font-semibold text-primary">Paneles</h2>
+			<SectionHeader title="Paneles" divider={false} className="mt-2" />
 			{panels.map((p) => (
 				<AssetRow
 					key={p.slug}
