@@ -61,5 +61,5 @@ bunx prisma migrate dev
 1. Crea la app en la [consola de Twitch](https://dev.twitch.tv/console/apps) con la redirección `https://scaena.jotis.me/api/auth/callback/twitch`.
 2. Desde el Marketplace de Vercel, añade Upstash Redis y Neon Postgres, y crea la clave de YouTube Data API v3.
 3. Rellena en Vercel las variables de `.env.example`.
-4. Usa Bun como gestor de instalación y añade `bunx prisma migrate deploy` antes del build.
+4. Usa Bun como gestor de instalación y deja el Build Command por defecto: Vercel ejecuta `vercel-build`, que aplica las migraciones (`prisma migrate deploy`) antes de construir. Si pones un Build Command propio, tiene que hacer lo mismo.
 5. Despliega, apunta `scaena.jotis.me`, entra en `/studio/login` con Twitch y conecta los eventos en `/studio/connection`.

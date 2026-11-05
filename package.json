@@ -10,6 +10,7 @@
 		"postinstall": "prisma generate",
 		"dev": "next dev",
 		"build": "bun run validate-profile && next build",
+		"vercel-build": "prisma migrate deploy && bun run build",
 		"validate-profile": "bun run scripts/validate-profile.ts",
 		"start": "next start",
 		"lint": "biome check .",
