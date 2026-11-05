@@ -64,6 +64,36 @@ export function revokedNotice(rows: SubscriptionRow[]): { title: string; descrip
 	};
 }
 
+/**
+ * Aviso para el resto del estudio (Overlays, Recursos) cuando los eventos no llegan del todo: sin conectar,
+ * revocados o alguno sin dar de alta. `null` si todo está activo o pendiente de verificar.
+ */
+export function eventsNotice(
+	rows: SubscriptionRow[],
+): { title: string; description: string; action: string } | null {
+	const view = connectionView(rows);
+	if (view === "none")
+		return {
+			title: "Eventos sin conectar",
+			description:
+				"Las alertas, los eventos y la meta no reciben nada hasta que conectes los eventos de Twitch. El chat y el estado ya funcionan.",
+			action: "Conectar eventos",
+		};
+	const revoked = revokedNotice(rows);
+	if (revoked) return { ...revoked, action: "Revisar la conexión" };
+	const missing = rows.filter((r) => r.state === "missing");
+	if (missing.length)
+		return {
+			title:
+				missing.length === 1
+					? "Falta un evento por conectar"
+					: `Faltan ${missing.length} eventos por conectar`,
+			description: `${missing.map((r) => SUBSCRIPTION_LABELS[r.type]).join(", ")}: no llegarán a los overlays hasta que los des de alta.`,
+			action: "Revisar la conexión",
+		};
+	return null;
+}
+
 export function activeCount(rows: SubscriptionRow[]): string {
 	return `${rows.filter((r) => r.state === "enabled").length} de ${rows.length} activas`;
 }

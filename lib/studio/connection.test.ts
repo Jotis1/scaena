@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SUBSCRIPTIONS } from "../twitch/eventsub/normalize";
 import type { SubscriptionRow } from "../twitch/eventsub/subscriptions";
-import { activeCount, connectionView, revokedNotice } from "./connection";
+import { activeCount, connectionView, eventsNotice, revokedNotice } from "./connection";
 
 const rows = (over: Partial<Record<string, Partial<SubscriptionRow>>> = {}): SubscriptionRow[] =>
 	SUBSCRIPTIONS.map(({ type }) => ({ type, state: "enabled", ...over[type] }));
@@ -35,5 +35,34 @@ describe("textos de la conexión", () => {
 		});
 		expect(revokedNotice(r)?.title).toBe("Twitch ha revocado 2 suscripciones");
 		expect(revokedNotice(r)?.description).toMatch(/^Bits, Raid: .*retirado la autorización/);
+	});
+});
+
+describe("aviso de eventos en el resto del estudio", () => {
+	it("sin conectar: pide conectarlos", () => {
+		const n = eventsNotice(SUBSCRIPTIONS.map(({ type }) => ({ type, state: "missing" })));
+		expect(n).toMatchObject({ title: "Eventos sin conectar", action: "Conectar eventos" });
+	});
+
+	it("todo activo o verificando: nada", () => {
+		expect(eventsNotice(rows())).toBeNull();
+		expect(eventsNotice(rows({ "stream.online": { state: "pending" } }))).toBeNull();
+	});
+
+	it("una revocada: el mismo aviso que la página de conexión", () => {
+		const n = eventsNotice(
+			rows({ "channel.raid": { state: "revoked", reason: "authorization_revoked" } }),
+		);
+		expect(n?.title).toBe("Twitch ha revocado una suscripción");
+		expect(n?.action).toBe("Revisar la conexión");
+	});
+
+	it("alguna sin dar de alta: dice cuáles", () => {
+		const n = eventsNotice(rows({ "channel.cheer": { state: "missing" } }));
+		expect(n).toEqual({
+			title: "Falta un evento por conectar",
+			description: "Bits: no llegarán a los overlays hasta que los des de alta.",
+			action: "Revisar la conexión",
+		});
 	});
 });

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { EventsNotice } from "@/components/studio/EventsNotice";
 import { OverlaySources } from "@/components/studio/OverlaySources";
 import { effectivePhrases, readSettings } from "@/lib/alerts/settings";
 import { env } from "@/lib/env";
@@ -21,14 +23,20 @@ export default async function OverlaysPage() {
 		readSettings(s, session.channelId),
 	]);
 	return (
-		<OverlaySources
-			origin={new URL(env().BETTER_AUTH_URL).origin}
-			channel={profile.twitch.login}
-			token={token}
-			cameraName={profile.camera.name}
-			footer={sceneFooter(profile.schedule)}
-			scenes={profile.scenes}
-			phrases={effectivePhrases(profile, settings)}
-		/>
+		<>
+			{/* Sin esperar a Twitch: el aviso llega cuando llegue. */}
+			<Suspense fallback={null}>
+				<EventsNotice channelId={session.channelId} />
+			</Suspense>
+			<OverlaySources
+				origin={new URL(env().BETTER_AUTH_URL).origin}
+				channel={profile.twitch.login}
+				token={token}
+				cameraName={profile.camera.name}
+				footer={sceneFooter(profile.schedule)}
+				scenes={profile.scenes}
+				phrases={effectivePhrases(profile, settings)}
+			/>
+		</>
 	);
 }
