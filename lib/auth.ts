@@ -38,8 +38,16 @@ export function createAuth(o: AuthOptions) {
 				// Se ejecuta en cada entrada, antes de crear o actualizar nada: una cuenta que no está en la lista
 				// no llega a tener usuario ni sesión, y una que se quita de la lista deja de poder entrar.
 				mapProfileToUser: (profile) => {
-					if (!o.allowedIds.includes(String(profile.sub)))
-						throw new APIError("FORBIDDEN", { message: ERROR_NOT_ALLOWED });
+					const id = String(profile.sub);
+					if (!o.allowedIds.includes(id)) {
+						const login = String(profile.preferred_username ?? "");
+						// Los ids de Twitch son públicos: dejarlos en el registro permite ver al momento si la lista de
+						// permitidos (STUDIO_ALLOWED_TWITCH_IDS) no es la que se esperaba.
+						console.warn(
+							`Estudio: cuenta de Twitch rechazada, ${login} (${id}). Permitidos: ${o.allowedIds.join(", ") || "(ninguno)"}.`,
+						);
+						throw new APIError("FORBIDDEN", { message: `${ERROR_NOT_ALLOWED}|${login}|${id}` });
+					}
 					return {};
 				},
 			},
@@ -61,8 +69,11 @@ export async function handleAuth(a: Auth, request: Request): Promise<Response> {
 	const res = await a.handler(request);
 	if (res.status !== 403 || !new URL(request.url).pathname.includes("/callback/")) return res;
 	const body = await res.clone().text();
-	if (!body.includes(ERROR_NOT_ALLOWED)) return res;
-	const headers = new Headers({ location: `/studio/login?error=${ERROR_NOT_ALLOWED}` });
+	const match = new RegExp(`${ERROR_NOT_ALLOWED}\\|([^|"]*)\\|(\\d+)`).exec(body);
+	if (!match) return res;
+	// La cuenta con la que se ha entrado sale en el aviso (diseño: «Has entrado como …»).
+	const q = new URLSearchParams({ error: ERROR_NOT_ALLOWED, account: match[1] ?? "", id: match[2] ?? "" });
+	const headers = new Headers({ location: `/studio/login?${q}` });
 	for (const c of res.headers.getSetCookie()) headers.append("set-cookie", c);
 	return new Response(null, { status: 302, headers });
 }

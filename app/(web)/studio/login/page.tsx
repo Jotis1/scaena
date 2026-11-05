@@ -7,8 +7,17 @@ import { ERROR_NOT_ALLOWED } from "@/lib/auth";
 export const metadata: Metadata = { title: "Entra en el Estudio · Scaena", robots: { index: false } };
 
 // Entrada al estudio (diseño: «Entrada» y «Cuenta sin acceso»; specs/obs-overlays, «Acceso al estudio»).
-export default async function StudioLogin({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-	const { error } = await searchParams;
+export default async function StudioLogin({
+	searchParams,
+}: {
+	searchParams: Promise<{ error?: string; account?: string; id?: string }>;
+}) {
+	const { error, account, id } = await searchParams;
+	// La cuenta con la que se ha entrado (diseño: «Has entrado como …»). Solo el nombre de usuario de Twitch y su id.
+	const who =
+		account && /^\w{1,25}$/.test(account)
+			? `${account}${id && /^\d+$/.test(id) ? ` (id ${id})` : ""}`
+			: null;
 	const denied = error === ERROR_NOT_ALLOWED;
 	const failed = Boolean(error) && !denied;
 
@@ -43,7 +52,7 @@ export default async function StudioLogin({ searchParams }: { searchParams: Prom
 							color="warning"
 							icon="lock-01"
 							title="Esta cuenta no tiene acceso"
-							description="La cuenta de Twitch con la que has entrado no está entre las que pueden usar el Estudio. Si crees que debería, pide acceso a quien lo administra."
+							description={`${who ? `Has entrado como ${who}, pero no` : "La cuenta de Twitch con la que has entrado no"} está entre las que pueden usar el Estudio. Si crees que debería, pide acceso a quien lo administra.`}
 						/>
 					) : null}
 					{failed ? (

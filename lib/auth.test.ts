@@ -103,7 +103,9 @@ describe("entrada al estudio con Twitch", () => {
 		const { auth, data } = newAuth();
 		const res = await signIn(auth, { sub: "999", email: "otra@ejemplo.es", name: "otra" });
 		expect(res.status).toBe(302);
-		expect(res.headers.get("location")).toBe(`/studio/login?error=${ERROR_NOT_ALLOWED}`);
+		expect(res.headers.get("location")).toBe(
+			`/studio/login?error=${ERROR_NOT_ALLOWED}&account=otra&id=999`,
+		);
 		expect(await auth.api.getSession({ headers: new Headers({ cookie: cookiesOf(res) }) })).toBeNull();
 		expect(data.user).toHaveLength(0);
 		expect(data.session).toHaveLength(0);
