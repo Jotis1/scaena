@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { ChatEvent } from "./parser";
 import { type ChatOptions, type ChatState, initialChatState, reduceChat, visibleMessages } from "./state";
 
-const options: ChatOptions = { channel: "jotis1", hidden: ["nightbot"] };
+const options: ChatOptions = { channel: "jotis_1", hidden: ["nightbot"] };
 
 let n = 0;
 function msg(data: Partial<Extract<ChatEvent, { type: "message" }>> = {}): ChatEvent {
 	n++;
 	return {
 		type: "message",
-		channel: "jotis1",
+		channel: "jotis_1",
 		id: `m${n}`,
 		userId: `u${n}`,
 		login: `user${n}`,
@@ -45,7 +45,7 @@ describe("estado del chat", () => {
 		const s = apply([
 			msg({ id: "borrame" }),
 			msg(),
-			{ type: "deleteMessage", channel: "jotis1", id: "borrame" },
+			{ type: "deleteMessage", channel: "jotis_1", id: "borrame" },
 		]);
 		expect(visibleMessages(s)).toHaveLength(1);
 		expect(visibleMessages(s).some((m) => m.id === "borrame")).toBe(false);
@@ -58,13 +58,13 @@ describe("estado del chat", () => {
 			msg({ text: "otro" }),
 			from("dos"),
 			from("tres"),
-			{ type: "deleteUser", channel: "jotis1", userId: "malo" },
+			{ type: "deleteUser", channel: "jotis_1", userId: "malo" },
 		]);
 		expect(texts(s)).toEqual(["otro"]);
 	});
 
 	it("limpiar el chat lo vacía", () => {
-		expect(visibleMessages(apply([msg(), msg(), { type: "clear", channel: "jotis1" }]))).toEqual([]);
+		expect(visibleMessages(apply([msg(), msg(), { type: "clear", channel: "jotis_1" }]))).toEqual([]);
 	});
 
 	it("ni comandos ni usuarios ocultos: «!horario» y la respuesta del bot no salen", () => {

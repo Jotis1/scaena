@@ -1,6 +1,6 @@
 # Scaena
 
-La app de la suite jotis.me para el canal de Twitch [jotis1](https://twitch.tv/jotis1): overlays para OBS, el estudio donde se configuran y la web pública del canal en [scaena.jotis.me](https://scaena.jotis.me).
+La app de la suite jotis.me para el canal de Twitch [jotis_1](https://twitch.tv/jotis_1): overlays para OBS, el estudio donde se configuran y la web pública del canal en [scaena.jotis.me](https://scaena.jotis.me).
 
 Está hecha con el sistema de diseño [Regula](https://regula.jotis.me) (`@jotis-me/react`) y sigue su guía. El plan completo vive en `openspec/changes/create-scaena/`.
 

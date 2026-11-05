@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const URL = "/overlay/jotis1/camera";
+const URL = "/overlay/jotis_1/camera";
 
 test.describe("layout de overlay", () => {
 	test("la página es transparente", async ({ page }) => {

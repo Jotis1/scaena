@@ -30,14 +30,14 @@ describe("claves de Redis", () => {
 	});
 
 	it("rechaza ids que no son el id numérico de Twitch", () => {
-		expect(() => keys.channel("jotis1", "events")).toThrow(/id numérico/);
+		expect(() => keys.channel("jotis_1", "events")).toThrow(/id numérico/);
 		expect(() => keys.channel("1:events", "token")).toThrow();
 		expect(() => keys.channel("", "token")).toThrow();
 	});
 
 	it("lo global queda fuera del prefijo de canal", () => {
-		for (const k of [keys.appToken(), keys.eventsubSeen("abc"), keys.idFromLogin("Jotis1")])
+		for (const k of [keys.appToken(), keys.eventsubSeen("abc"), keys.idFromLogin("Jotis_1")])
 			expect(k.startsWith("channel:")).toBe(false);
-		expect(keys.idFromLogin("Jotis1")).toBe("app:twitch:login:jotis1");
+		expect(keys.idFromLogin("Jotis_1")).toBe("app:twitch:login:jotis_1");
 	});
 });

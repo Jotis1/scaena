@@ -26,7 +26,7 @@ function problems(yaml: string): string[] {
 describe("perfil del canal", () => {
 	it("el perfil del repositorio es válido", () => {
 		const p = parseProfile(REAL_YAML);
-		expect(p.twitch.login).toBe("jotis1");
+		expect(p.twitch.login).toBe("jotis_1");
 		expect(p.scenes.offline.title).toBe("Ahora no estoy");
 	});
 
@@ -100,8 +100,8 @@ describe("perfil del canal", () => {
 
 describe("getProfile", () => {
 	it("devuelve el perfil del canal configurado", () => {
-		expect(getProfile("jotis1").name).toBe("Jotis");
-		expect(getProfile("Jotis1").name).toBe("Jotis");
+		expect(getProfile("jotis_1").name).toBe("Jotis");
+		expect(getProfile("Jotis_1").name).toBe("Jotis");
 	});
 
 	it("falla con otro canal", () => {

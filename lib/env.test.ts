@@ -31,7 +31,7 @@ describe("readEnv", () => {
 	});
 
 	it("rechaza ids de Twitch que no son cifras", () => {
-		expect(() => readEnv({ ...VALID_ENV, STUDIO_ALLOWED_TWITCH_IDS: "jotis1" })).toThrow(
+		expect(() => readEnv({ ...VALID_ENV, STUDIO_ALLOWED_TWITCH_IDS: "jotis_1" })).toThrow(
 			/STUDIO_ALLOWED_TWITCH_IDS/,
 		);
 	});

@@ -88,13 +88,13 @@ async function signIn(
 }
 
 describe("entrada al estudio con Twitch", () => {
-	it("jotis1 entra: vuelve a /studio/overlays con sesión de 30 días", async () => {
+	it("jotis_1 entra: vuelve a /studio/overlays con sesión de 30 días", async () => {
 		const { auth } = newAuth();
-		const res = await signIn(auth, { sub: ALLOWED, email: "jotis@ejemplo.es", name: "jotis1" });
+		const res = await signIn(auth, { sub: ALLOWED, email: "jotis@ejemplo.es", name: "jotis_1" });
 		expect(res.status).toBe(302);
 		expect(res.headers.get("location")).toBe("/studio/overlays");
 		const session = await auth.api.getSession({ headers: new Headers({ cookie: cookiesOf(res) }) });
-		expect(session?.user.name).toBe("jotis1");
+		expect(session?.user.name).toBe("jotis_1");
 		const days = (new Date(session?.session.expiresAt ?? 0).getTime() - Date.now()) / 86_400_000;
 		expect(Math.round(days)).toBe(30);
 	});
@@ -114,7 +114,7 @@ describe("entrada al estudio con Twitch", () => {
 
 	it("una cookie manipulada no da sesión", async () => {
 		const { auth } = newAuth();
-		const res = await signIn(auth, { sub: ALLOWED, email: "jotis@ejemplo.es", name: "jotis1" });
+		const res = await signIn(auth, { sub: ALLOWED, email: "jotis@ejemplo.es", name: "jotis_1" });
 		const cookie = cookiesOf(res).replace(
 			/(session_token=)([^;]+)/,
 			(_, k, v: string) => `${k}${v.slice(0, -3)}abc`,
@@ -124,7 +124,7 @@ describe("entrada al estudio con Twitch", () => {
 
 	it("«Salir» invalida la sesión", async () => {
 		const { auth } = newAuth();
-		const res = await signIn(auth, { sub: ALLOWED, email: "jotis@ejemplo.es", name: "jotis1" });
+		const res = await signIn(auth, { sub: ALLOWED, email: "jotis@ejemplo.es", name: "jotis_1" });
 		const headers = new Headers({ cookie: cookiesOf(res), origin: BASE });
 		await auth.api.signOut({ headers });
 		expect(await auth.api.getSession({ headers })).toBeNull();
@@ -132,7 +132,7 @@ describe("entrada al estudio con Twitch", () => {
 
 	it("un state que no coincide se rechaza", async () => {
 		const { auth } = newAuth();
-		twitchProfile = { sub: ALLOWED, email: "jotis@ejemplo.es", preferred_username: "jotis1" };
+		twitchProfile = { sub: ALLOWED, email: "jotis@ejemplo.es", preferred_username: "jotis_1" };
 		const res = await auth.handler(
 			new Request(`${BASE}/api/auth/callback/twitch?code=codigo&state=inventado`),
 		);

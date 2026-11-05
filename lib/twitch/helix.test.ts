@@ -48,7 +48,7 @@ describe("token de app", () => {
 		const d = deps(t.f);
 		await appToken(d);
 		await appToken(d);
-		await helix(d, "/users?login=jotis1");
+		await helix(d, "/users?login=jotis_1");
 		expect(t.issued()).toBe(1);
 	});
 
@@ -67,9 +67,9 @@ describe("token de app", () => {
 describe("helix", () => {
 	it("manda client-id y el token", async () => {
 		const t = fakeTwitch();
-		await helix(deps(t.f), "/streams?user_login=jotis1");
+		await helix(deps(t.f), "/streams?user_login=jotis_1");
 		expect(t.calls.at(-1)).toMatchObject({
-			url: "https://api.twitch.tv/helix/streams?user_login=jotis1",
+			url: "https://api.twitch.tv/helix/streams?user_login=jotis_1",
 			auth: "Bearer token-1",
 			clientId: "cid",
 		});

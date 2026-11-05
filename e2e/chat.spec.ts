@@ -29,10 +29,10 @@ test.beforeEach(() => {
 });
 
 const msg = (id: string, user: string, userId: string, text: string, badges = "") =>
-	`@badges=${badges};display-name=${user};id=${id};user-id=${userId} :${user.toLowerCase()}!x@x.tmi.twitch.tv PRIVMSG #jotis1 :${text}\r\n`;
+	`@badges=${badges};display-name=${user};id=${id};user-id=${userId} :${user.toLowerCase()}!x@x.tmi.twitch.tv PRIVMSG #jotis_1 :${text}\r\n`;
 
 async function openChat(page: Page, query = "") {
-	await page.goto(`/overlay/jotis1/chat${query}`);
+	await page.goto(`/overlay/jotis_1/chat${query}`);
 	await expect.poll(() => connections.length).toBe(1);
 	const s = connections[0] as WsSocket;
 	// Espera a que el cliente haya pedido unirse al canal antes de mandarle nada.
@@ -66,10 +66,10 @@ test("muestra nombre e insignias, y respeta borrados y baneos", async ({ page })
 	await expect(page.getByText("Ronni").first()).toBeVisible();
 
 	// Borrado de un mensaje.
-	send("@login=ana;target-msg-id=m2 :tmi.twitch.tv CLEARMSG #jotis1 :Ese pasillo no lo has mirado.\r\n");
+	send("@login=ana;target-msg-id=m2 :tmi.twitch.tv CLEARMSG #jotis_1 :Ese pasillo no lo has mirado.\r\n");
 	await expect(page.getByText("Ese pasillo no lo has mirado.")).toHaveCount(0);
 	// Baneo: se van todos los mensajes de Ronni.
-	send("@ban-duration=600;target-user-id=2002 :tmi.twitch.tv CLEARCHAT #jotis1 :ronni\r\n");
+	send("@ban-duration=600;target-user-id=2002 :tmi.twitch.tv CLEARCHAT #jotis_1 :ronni\r\n");
 	await expect(page.getByText("Hay un cofre detrás de la roca.")).toHaveCount(0);
 	await expect(page.getByText("Fijo que sí.")).toHaveCount(0);
 });
@@ -80,7 +80,7 @@ test("los comandos no salen y la limpieza del chat vacía el overlay", async ({ 
 	send(msg("m2", "Ana", "1001", "esto sí"));
 	await expect(page.getByText("esto sí")).toBeVisible();
 	await expect(page.getByText("!horario")).toHaveCount(0);
-	send("@room-id=1 :tmi.twitch.tv CLEARCHAT #jotis1\r\n");
+	send("@room-id=1 :tmi.twitch.tv CLEARCHAT #jotis_1\r\n");
 	await expect(page.getByText("esto sí")).toHaveCount(0);
 });
 

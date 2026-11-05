@@ -5,7 +5,7 @@
 name: Jotis
 
 twitch:
-    login: jotis1
+    login: jotis_1
 
 youtube:
     handle: "@jotis_1"
@@ -45,7 +45,7 @@ banner:
 socials:
     - network: twitch
       text: El directo, cuando lo hay. El chat lo leo en voz alta.
-      url: https://twitch.tv/jotis1
+      url: https://twitch.tv/jotis_1
     - network: youtube
       text: "El diario: directos resubidos y editados."
       url: https://www.youtube.com/@jotis_1

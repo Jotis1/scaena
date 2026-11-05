@@ -23,8 +23,8 @@ export interface StudioUser {
 	remove(): Promise<void>;
 }
 
-/** Crea a jotis1 (id de Twitch `CHANNEL_ID`) con una sesión de 30 días. Cada test, el suyo. */
-export async function createStudioUser(name = "jotis1"): Promise<StudioUser> {
+/** Crea a jotis_1 (id de Twitch `CHANNEL_ID`) con una sesión de 30 días. Cada test, el suyo. */
+export async function createStudioUser(name = "jotis_1"): Promise<StudioUser> {
 	const db = new pg.Client({ connectionString: E2E_DATABASE_URL });
 	await db.connect();
 	const userId = `e2e-${randomUUID()}`;

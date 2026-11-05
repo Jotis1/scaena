@@ -166,7 +166,7 @@ test.describe("aviso de directo", () => {
 		await expect(banner).toContainText("1.284 espectadores");
 		await expect(banner.getByRole("link", { name: "Ver en Twitch" })).toHaveAttribute(
 			"href",
-			"https://twitch.tv/jotis1",
+			"https://twitch.tv/jotis_1",
 		);
 		await expect(banner.getByRole("link", { name: "scaena.jotis.me/live" })).toHaveAttribute(
 			"href",
@@ -216,7 +216,7 @@ test.describe("/live", () => {
 		await seed(LIVE);
 		const res = await request.get("/live", { maxRedirects: 0 });
 		expect(res.status()).toBe(302);
-		expect(res.headers().location).toBe("https://www.twitch.tv/jotis1");
+		expect(res.headers().location).toBe("https://www.twitch.tv/jotis_1");
 	});
 });
 

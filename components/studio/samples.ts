@@ -12,7 +12,7 @@ export const SAMPLE_CHAT: ChatMessage[] = [
 		badges: ["sub"],
 	},
 	{ id: "3", user: "[moderador]", text: "Recordad las normas del panel.", tone: "purple", badges: ["mod"] },
-	{ id: "4", user: "jotis1", text: "Vamos a por él. Otra vez.", tone: "brand", badges: ["broadcaster"] },
+	{ id: "4", user: "jotis_1", text: "Vamos a por él. Otra vez.", tone: "brand", badges: ["broadcaster"] },
 ];
 
 export const SAMPLE_EVENTS: StreamEventItem[] = [

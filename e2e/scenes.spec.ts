@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const BASE = "/overlay/jotis1/scene";
+const BASE = "/overlay/jotis_1/scene";
 
 test.use({ viewport: { width: 1920, height: 1080 } });
 
@@ -28,8 +28,8 @@ for (const [variant, texts] of Object.entries(COPY)) {
 		const errors = consoleErrors(page);
 		await page.goto(`${BASE}/${variant}`);
 		for (const t of texts) await expect(page.getByText(t, { exact: false })).toBeVisible();
-		await expect(page.getByText("jotis1", { exact: true })).toBeVisible();
-		await expect(page.getByText("twitch.tv/jotis1")).toBeVisible();
+		await expect(page.getByText("jotis_1", { exact: true })).toBeVisible();
+		await expect(page.getByText("twitch.tv/jotis_1")).toBeVisible();
 
 		const size = await page.evaluate(() => {
 			// El primer hijo de `body` es un `div` oculto de Next; el lienzo es el primero visible.

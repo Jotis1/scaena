@@ -21,7 +21,7 @@ async function transitionOf(page: Page, classes: string) {
 test.describe("movimiento", () => {
 	test("normal: entra y sale con fundido y 8px de desplazamiento", async ({ page }) => {
 		await page.emulateMedia({ reducedMotion: "no-preference" });
-		await page.goto("/overlay/jotis1/camera");
+		await page.goto("/overlay/jotis_1/camera");
 		expect((await transitionOf(page, ENTER)).property).toBe("opacity, translate");
 		expect(await transitionOf(page, EXIT)).toEqual({
 			property: "opacity, translate",
@@ -31,7 +31,7 @@ test.describe("movimiento", () => {
 
 	test("con menos movimiento, solo cambia la opacidad", async ({ page }) => {
 		await page.emulateMedia({ reducedMotion: "reduce" });
-		await page.goto("/overlay/jotis1/camera");
+		await page.goto("/overlay/jotis_1/camera");
 		expect((await transitionOf(page, ENTER)).property).toBe("opacity");
 		expect(await transitionOf(page, EXIT)).toEqual({ property: "opacity", offset: "0px" });
 	});
@@ -39,9 +39,9 @@ test.describe("movimiento", () => {
 
 test.describe("siempre en oscuro", () => {
 	for (const path of [
-		"/overlay/jotis1/camera",
-		"/overlay/jotis1/scene/starting",
-		"/overlay/jotis1/scene/offline",
+		"/overlay/jotis_1/camera",
+		"/overlay/jotis_1/scene/starting",
+		"/overlay/jotis_1/scene/offline",
 	]) {
 		test(`${path}, con el sistema en claro`, async ({ browser }) => {
 			const context = await browser.newContext({ colorScheme: "light" });

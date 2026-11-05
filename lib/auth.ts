@@ -19,7 +19,7 @@ export interface AuthOptions {
 	secret: string;
 	clientId: string;
 	clientSecret: string;
-	/** Ids de Twitch que pueden entrar en el estudio (hoy, el de jotis1). */
+	/** Ids de Twitch que pueden entrar en el estudio (hoy, el de jotis_1). */
 	allowedIds: readonly string[];
 	/** Base de datos de better-auth; en producción, Prisma. Los tests pasan la de memoria. */
 	database: Parameters<typeof betterAuth>[0]["database"];

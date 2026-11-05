@@ -3,7 +3,7 @@ import { type ChatMessageEvent, TONES, toChatMessage, toneFor, toRegulaBadges } 
 
 const base: ChatMessageEvent = {
 	type: "message",
-	channel: "jotis1",
+	channel: "jotis_1",
 	id: "m1",
 	userId: "87654321",
 	login: "ronni",

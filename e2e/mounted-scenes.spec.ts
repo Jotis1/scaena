@@ -33,7 +33,7 @@ async function box(page: Page, name: string) {
 
 test.describe("escena de juego", () => {
 	test("llena 1920×1080 sin desplazamiento y cada pieza va donde dice el diseño", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/game?token=bueno&start=284&goal=300");
+		await open(page, "/overlay/jotis_1/scene/game?token=bueno&start=284&goal=300");
 		await expect(page.getByRole("progressbar")).toBeVisible();
 		expect(
 			await page.evaluate(() => [
@@ -55,7 +55,7 @@ test.describe("escena de juego", () => {
 	});
 
 	test("ninguna pieza fija ocupa la franja de 480 a 1440 px", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/game?token=bueno");
+		await open(page, "/overlay/jotis_1/scene/game?token=bueno");
 		await expect(page.getByRole("progressbar")).toBeVisible();
 		for (const name of ["status", "goal", "chat", "events", "camera"]) {
 			const b = await box(page, name);
@@ -67,7 +67,7 @@ test.describe("escena de juego", () => {
 	test("sin token se ven el chat, el estado y el marco, pero no alertas, eventos ni meta", async ({
 		page,
 	}) => {
-		await open(page, "/overlay/jotis1/scene/game");
+		await open(page, "/overlay/jotis_1/scene/game");
 		await expect(page.getByRole("log")).toBeVisible();
 		await expect(piece(page, "status").getByRole("status")).toContainText("En directo");
 		await expect(piece(page, "camera")).toBeVisible();
@@ -78,7 +78,7 @@ test.describe("escena de juego", () => {
 	});
 
 	test("con `goal=0` no queda hueco donde iba la meta", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/game?token=bueno&goal=0");
+		await open(page, "/overlay/jotis_1/scene/game?token=bueno&goal=0");
 		await expect(page.getByText("Berta")).toBeVisible();
 		await expect(piece(page, "goal")).toHaveCount(0);
 		await expect(page.getByRole("progressbar")).toHaveCount(0);
@@ -89,7 +89,7 @@ test.describe("escena de juego", () => {
 	});
 
 	test("`chat`, `camera` y `events` a 0 quitan su pieza", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/game?token=bueno&chat=0&camera=0&events=0");
+		await open(page, "/overlay/jotis_1/scene/game?token=bueno&chat=0&camera=0&events=0");
 		await expect(page.getByRole("progressbar")).toBeVisible();
 		for (const name of ["chat", "camera", "events"]) await expect(piece(page, name)).toHaveCount(0);
 	});
@@ -97,7 +97,7 @@ test.describe("escena de juego", () => {
 
 test.describe("escena de Just Chatting", () => {
 	test("posiciones del diseño, meta y eventos debajo de la cámara a plena opacidad", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/chatting?token=bueno&start=284&goal=300");
+		await open(page, "/overlay/jotis_1/scene/chatting?token=bueno&start=284&goal=300");
 		await expect(page.getByRole("progressbar")).toBeVisible();
 		await expect(page.getByText("Berta")).toBeVisible();
 		const cam = await box(page, "camera");
@@ -119,7 +119,7 @@ test.describe("escena de Just Chatting", () => {
 	});
 
 	test("la alerta entra encima del chat sin taparlo", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/chatting?token=bueno");
+		await open(page, "/overlay/jotis_1/scene/chatting?token=bueno");
 		const card = piece(page, "alerts").getByRole("status");
 		await expect(card).toBeVisible();
 		const a = await card.boundingBox();
@@ -128,7 +128,7 @@ test.describe("escena de Just Chatting", () => {
 	});
 
 	test("el fondo deja ver la cámara de OBS por el hueco del marco", async ({ page }) => {
-		await open(page, "/overlay/jotis1/scene/chatting");
+		await open(page, "/overlay/jotis_1/scene/chatting");
 		const mask = await piece(page, "background").evaluate((el) => getComputedStyle(el).maskImage);
 		expect(mask).toContain("evenodd");
 		expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(

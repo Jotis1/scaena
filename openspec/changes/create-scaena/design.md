@@ -21,7 +21,7 @@
 **Non-Goals:**
 - Cambiar componentes de Regula. Si falta algo (por ejemplo, emotes como imagen en `ChatBox`), se propone en Regula en otro cambio.
 - Panel de administración web para el contenido: el perfil se edita en el repositorio.
-- Varios canales: Scaena es para un solo canal (jotis1), pero queda preparada para abrirse a más sin rehacer nada (decisión 14).
+- Varios canales: Scaena es para un solo canal (jotis_1), pero queda preparada para abrirse a más sin rehacer nada (decisión 14).
 - Otras plataformas de emisión, donaciones y puntos del canal.
 
 ## Decisions
@@ -232,7 +232,7 @@ Parámetros: `token`, y `chat`, `camera`, `events` y `goal` (`0` para quitar la 
 Proyecto nuevo, sin migración. Despliegue:
 1. Crear la app en la consola de desarrolladores de Twitch con la redirección `https://scaena.jotis.me/api/auth/callback/twitch` (y `http://localhost:3000/api/auth/callback/twitch` para desarrollo).
 2. Crear desde el Marketplace de Vercel el Redis de Upstash y la base de datos de Neon, aplicar las migraciones (`bunx prisma migrate deploy`) y crear la clave de YouTube Data API v3.
-3. Configurar las variables en Vercel: `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_EVENTSUB_SECRET`, `YOUTUBE_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DATABASE_URL` (Neon) y `STUDIO_ALLOWED_TWITCH_IDS` (hoy, el id de jotis1).
+3. Configurar las variables en Vercel: `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_EVENTSUB_SECRET`, `YOUTUBE_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DATABASE_URL` (Neon) y `STUDIO_ALLOWED_TWITCH_IDS` (hoy, el id de jotis_1).
 4. Desplegar, apuntar `scaena.jotis.me`, entrar con Twitch en `/studio/login` y dar de alta EventSub en `/studio/connection`.
 5. Añadir las fuentes en OBS desde `/studio` y probar cada tipo de evento.
 

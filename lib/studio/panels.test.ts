@@ -38,7 +38,7 @@ describe("paneles del perfil", () => {
 
 	it("el banner: nombre, lema y «Suele ser 17-20 h» / «Días: Sin fijar»", () => {
 		expect(bannerOf(profile)).toEqual({
-			name: "jotis1",
+			name: "jotis_1",
 			tagline: "Juegos a mi ritmo, sin prisa.",
 			eyebrow: "Juegos y Just Chatting en Twitch",
 			schedule: [

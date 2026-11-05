@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const URL = "/overlay/jotis1/camera";
+const URL = "/overlay/jotis_1/camera";
 
 /** El marco es el primer `div` visible del `body`; su interior es lo que no tapa la etiqueta. */
 async function frame(page: Page) {

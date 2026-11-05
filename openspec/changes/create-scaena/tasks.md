@@ -64,7 +64,7 @@ Las reglas de regula.jotis.me se aplican a todas las tareas (design.md, decisió
   - "Salir" con `signOut`;
   - aviso de estudio privado para cuentas no permitidas.
   
-  Verificar con tests de integración contra un Twitch simulado: jotis1 entra; otra cuenta no obtiene sesión ni se crea en la base; sin sesión se redirige a la entrada; una cookie manipulada se rechaza; "Salir" invalida la sesión
+  Verificar con tests de integración contra un Twitch simulado: jotis_1 entra; otra cuenta no obtiene sesión ni se crea en la base; sin sesión se redirige a la entrada; una cookie manipulada se rechaza; "Salir" invalida la sesión
 - [ ] 6.6 Crear `/studio/connection` según el diseño, con:
   - alta de las ocho suscripciones sin duplicar;
   - lista de su estado y botón para borrarlas;

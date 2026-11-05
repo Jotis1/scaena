@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { handleStatus } from "./status-handler";
 
 const deps = {
-	defaultLogin: "jotis1",
-	status: async (login: string) => (login === "jotis1" ? { live: false as const } : null),
+	defaultLogin: "jotis_1",
+	status: async (login: string) => (login === "jotis_1" ? { live: false as const } : null),
 };
 
 describe("GET /api/status", () => {
@@ -16,7 +16,7 @@ describe("GET /api/status", () => {
 	});
 
 	it("acepta el canal por parámetro, y 404 sin caché si no es de Scaena", async () => {
-		expect((await handleStatus(new Request("http://x/api/status?channel=JOTIS1"), deps)).status).toBe(
+		expect((await handleStatus(new Request("http://x/api/status?channel=JOTIS_1"), deps)).status).toBe(
 			200,
 		);
 		const res = await handleStatus(new Request("http://x/api/status?channel=otro"), deps);

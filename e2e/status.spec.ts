@@ -15,7 +15,7 @@ async function fakeStatus(page: Page, body: object) {
 
 test("por defecto no aparece la cifra de espectadores", async ({ page }) => {
 	await fakeStatus(page, LIVE);
-	await page.goto("/overlay/jotis1/status");
+	await page.goto("/overlay/jotis_1/status");
 	const pill = page.getByRole("status");
 	await expect(pill).toContainText("En directo");
 	await expect(pill).toContainText("Elden Ring");
@@ -25,13 +25,13 @@ test("por defecto no aparece la cifra de espectadores", async ({ page }) => {
 
 test("con `viewers=1` enseña los espectadores en formato español", async ({ page }) => {
 	await fakeStatus(page, LIVE);
-	await page.goto("/overlay/jotis1/status?viewers=1");
+	await page.goto("/overlay/jotis_1/status?viewers=1");
 	await expect(page.getByRole("status")).toContainText("1.284");
 });
 
 test("sin directo dice offline y el fondo sigue transparente", async ({ page }) => {
 	await fakeStatus(page, { live: false });
-	await page.goto("/overlay/jotis1/status");
+	await page.goto("/overlay/jotis_1/status");
 	await expect(page.getByRole("status")).toBeVisible();
 	await expect(page.getByRole("status")).not.toContainText("En directo");
 	expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(

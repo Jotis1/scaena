@@ -4,8 +4,8 @@ import type { Notification } from "./normalize";
 
 const channel = {
 	broadcaster_user_id: "1337",
-	broadcaster_user_login: "jotis1",
-	broadcaster_user_name: "jotis1",
+	broadcaster_user_login: "jotis_1",
+	broadcaster_user_name: "jotis_1",
 };
 const sub = (type: string, version = "1") => ({
 	id: "f1c2a387-161a-49f9-a165-0f21d7a4e1c4",
@@ -115,8 +115,8 @@ export const RAID: Notification = {
 		from_broadcaster_user_login: "otro_canal",
 		from_broadcaster_user_name: "Otro_Canal",
 		to_broadcaster_user_id: "1337",
-		to_broadcaster_user_login: "jotis1",
-		to_broadcaster_user_name: "jotis1",
+		to_broadcaster_user_login: "jotis_1",
+		to_broadcaster_user_name: "jotis_1",
 		viewers: 1284,
 	},
 };

@@ -29,7 +29,7 @@ test.describe("armazón", () => {
 		await expect(nav.getByRole("link", { name: "Recursos" })).toHaveAttribute("aria-current", "page");
 		await expect(nav.getByRole("link", { name: "Overlays" })).not.toHaveAttribute("aria-current", "page");
 		// Cuenta de la sesión, sin selector de canal.
-		await expect(page.getByText("jotis1", { exact: true }).first()).toBeVisible();
+		await expect(page.getByText("jotis_1", { exact: true }).first()).toBeVisible();
 		await expect(page.getByRole("combobox", { name: /canal/i })).toHaveCount(0);
 	});
 
@@ -62,11 +62,11 @@ test.describe("overlays", () => {
 		await page.goto("/studio/overlays");
 		const chat = page.getByRole("article", { name: "Chat" });
 		const url = chat.locator('[data-url="chat"]');
-		await expect(url).toHaveValue(/\/overlay\/jotis1\/chat\?translucent=1$/);
+		await expect(url).toHaveValue(/\/overlay\/jotis_1\/chat\?translucent=1$/);
 		const preview = chat.locator('[data-preview="chat"] [role="log"]');
 		const before = await preview.evaluate((el) => el.outerHTML);
 		await chat.getByText("Fondo translúcido", { exact: true }).click();
-		await expect(url).toHaveValue(/\/overlay\/jotis1\/chat$/);
+		await expect(url).toHaveValue(/\/overlay\/jotis_1\/chat$/);
 		expect(await preview.evaluate((el) => el.outerHTML)).not.toBe(before);
 	});
 
@@ -106,7 +106,7 @@ test.describe("overlays", () => {
 	test("tras rotarlo, la URL vieja deja de recibir eventos", async ({ page, request }) => {
 		await page.goto("/studio/overlays");
 		const old = String(await redis("GET", `channel:${CHANNEL_ID}:token`));
-		const events = (t: string) => `/api/events?channel=jotis1&token=${encodeURIComponent(t)}`;
+		const events = (t: string) => `/api/events?channel=jotis_1&token=${encodeURIComponent(t)}`;
 		const ok = await fetch(new URL(events(old), page.url()), { signal: AbortSignal.timeout(3000) });
 		expect(ok.status).toBe(200);
 		await ok.body?.cancel();
@@ -148,7 +148,7 @@ test.describe("overlays", () => {
 		await page.goto("/studio/overlays");
 		const token = String(await redis("GET", `channel:${CHANNEL_ID}:token`));
 		const obs = await context.newPage();
-		await obs.goto(`/overlay/jotis1/alerts?token=${token}`);
+		await obs.goto(`/overlay/jotis_1/alerts?token=${token}`);
 		// Que el flujo esté abierto antes de disparar.
 		await obs.waitForResponse((r) => r.url().includes("/api/events") && r.status() === 200);
 		await page.getByRole("button", { name: "Raid - 1.284" }).click();

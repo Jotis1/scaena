@@ -43,7 +43,7 @@ const deps = (f: typeof fetch, store = memoryStore()): HelixDeps => ({
 describe("estado del directo", () => {
 	it("en directo: título, categoría, espectadores e inicio", async () => {
 		const t = fakeTwitch([LIVE]);
-		expect(await getStatus(deps(t.f), CHANNEL, "jotis1")).toEqual({
+		expect(await getStatus(deps(t.f), CHANNEL, "jotis_1")).toEqual({
 			live: true,
 			title: "Elden Ring sin prisa",
 			category: "Elden Ring",
@@ -54,7 +54,7 @@ describe("estado del directo", () => {
 
 	it("offline, sin espectadores", async () => {
 		const t = fakeTwitch([{ data: [] }]);
-		expect(await getStatus(deps(t.f), CHANNEL, "jotis1")).toEqual({ live: false });
+		expect(await getStatus(deps(t.f), CHANNEL, "jotis_1")).toEqual({ live: false });
 	});
 
 	it("reutiliza la caché 60 s", async () => {
@@ -62,12 +62,12 @@ describe("estado del directo", () => {
 		const store = memoryStore(() => clock);
 		const t = fakeTwitch([{ data: [] }, LIVE]);
 		const d = deps(t.f, store);
-		await getStatus(d, CHANNEL, "jotis1");
+		await getStatus(d, CHANNEL, "jotis_1");
 		clock += 59_000;
-		expect((await getStatus(d, CHANNEL, "jotis1")).live).toBe(false);
+		expect((await getStatus(d, CHANNEL, "jotis_1")).live).toBe(false);
 		expect(t.calls()).toBe(1);
 		clock += 2000;
-		expect((await getStatus(d, CHANNEL, "jotis1")).live).toBe(true);
+		expect((await getStatus(d, CHANNEL, "jotis_1")).live).toBe(true);
 		expect(t.calls()).toBe(2);
 	});
 
@@ -76,9 +76,9 @@ describe("estado del directo", () => {
 		const store = memoryStore(() => clock);
 		const t = fakeTwitch([LIVE, 503]);
 		const d = deps(t.f, store);
-		await getStatus(d, CHANNEL, "jotis1");
+		await getStatus(d, CHANNEL, "jotis_1");
 		clock += 3 * 60_000;
-		expect(await getStatus(d, CHANNEL, "jotis1")).toMatchObject({
+		expect(await getStatus(d, CHANNEL, "jotis_1")).toMatchObject({
 			live: true,
 			viewers: 1284,
 			stale: true,
@@ -87,14 +87,14 @@ describe("estado del directo", () => {
 
 	it("Twitch caído y nada guardado: offline", async () => {
 		const t = fakeTwitch([500]);
-		expect(await getStatus(deps(t.f), CHANNEL, "jotis1")).toEqual({ live: false, stale: true });
+		expect(await getStatus(deps(t.f), CHANNEL, "jotis_1")).toEqual({ live: false, stale: true });
 	});
 
 	it("`stream.online` borra la caché: la siguiente consulta ya dice en directo", async () => {
 		const store = memoryStore();
 		const t = fakeTwitch([{ data: [] }, LIVE]);
 		const d = deps(t.f, store);
-		expect((await getStatus(d, CHANNEL, "jotis1")).live).toBe(false);
+		expect((await getStatus(d, CHANNEL, "jotis_1")).live).toBe(false);
 
 		const body = JSON.stringify(F.ONLINE);
 		const ts = new Date().toISOString();
@@ -110,6 +110,6 @@ describe("estado del directo", () => {
 			{ store, secret },
 		);
 		expect(await store.get(keys.channel(CHANNEL, "status"))).toBeNull();
-		expect((await getStatus(d, CHANNEL, "jotis1")).live).toBe(true);
+		expect((await getStatus(d, CHANNEL, "jotis_1")).live).toBe(true);
 	});
 });

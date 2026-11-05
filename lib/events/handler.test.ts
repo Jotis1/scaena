@@ -12,7 +12,7 @@ function setup(clock = { t: Date.parse("2026-11-04T18:00:00Z") }) {
 	const store = memoryStore(() => clock.t);
 	const deps = {
 		store,
-		channelId: async (login: string) => (login === "jotis1" ? CHANNEL : null),
+		channelId: async (login: string) => (login === "jotis_1" ? CHANNEL : null),
 		initial: () => async () => [{ event: "settings", data: '{"alerts":{}}' }],
 		stream: { pollMs: 5, heartbeatMs: 20, maxMs: 200, now: () => clock.t },
 	};
@@ -48,7 +48,7 @@ describe("GET /api/events", () => {
 	it("401 sin abrir el flujo si el token no vale", async () => {
 		const { deps, store } = setup();
 		await getOrCreateToken(store, CHANNEL);
-		for (const q of ["?channel=jotis1", "?channel=jotis1&token=otro"]) {
+		for (const q of ["?channel=jotis_1", "?channel=jotis_1&token=otro"]) {
 			const res = await handleEvents(new Request(BASE + q), deps);
 			expect(res.status).toBe(401);
 			expect(res.headers.get("content-type")).not.toMatch(/event-stream/);
@@ -65,7 +65,7 @@ describe("GET /api/events", () => {
 		const { deps, store, add } = setup();
 		const token = await getOrCreateToken(store, CHANNEL);
 		await add({ user: "Ana" });
-		const res = await handleEvents(new Request(`${BASE}?channel=jotis1&token=${token}`), deps);
+		const res = await handleEvents(new Request(`${BASE}?channel=jotis_1&token=${token}`), deps);
 		expect(res.headers.get("content-type")).toMatch(/^text\/event-stream/);
 		const text = await read(res, (t) => t.includes("Ana"));
 		expect(text).toMatch(/^retry: 2000\n\nevent: settings\ndata: \{"alerts":\{\}\}\n\n/);
@@ -75,7 +75,7 @@ describe("GET /api/events", () => {
 	it("al reconectar con Last-Event-ID llega lo nuevo una sola vez", async () => {
 		const { deps, store, add, clock } = setup();
 		const token = await getOrCreateToken(store, CHANNEL);
-		const url = `${BASE}?channel=jotis1&token=${token}`;
+		const url = `${BASE}?channel=jotis_1&token=${token}`;
 		await add({ user: "Ana" });
 		const first = await read(await handleEvents(new Request(url), deps), (t) => t.includes("Ana"));
 		const last = ids(first).at(-1) as string;
@@ -98,7 +98,7 @@ describe("GET /api/events", () => {
 		clock.t += RECOVERY_MS + 1000;
 		await add({ user: "Nueva" });
 		const text = await read(
-			await handleEvents(new Request(`${BASE}?channel=jotis1&token=${token}`), deps),
+			await handleEvents(new Request(`${BASE}?channel=jotis_1&token=${token}`), deps),
 			(t) => t.includes("Nueva"),
 		);
 		expect(users(text)).toEqual(["Nueva"]);
@@ -112,7 +112,7 @@ describe("GET /api/events", () => {
 		clock.t += 3 * 60 * 60 * 1000;
 		await add({ user: "Berta" });
 		const text = await read(
-			await handleEvents(new Request(`${BASE}?channel=jotis1&token=${token}&since=${since}`), deps),
+			await handleEvents(new Request(`${BASE}?channel=jotis_1&token=${token}&since=${since}`), deps),
 			(t) => t.includes("Berta"),
 		);
 		expect(users(text)).toEqual(["Ana", "Berta"]);
@@ -126,7 +126,7 @@ describe("GET /api/events", () => {
 			clock.t += 20;
 		}, 5);
 		const text = await read(
-			await handleEvents(new Request(`${BASE}?channel=jotis1&token=${token}`), deps),
+			await handleEvents(new Request(`${BASE}?channel=jotis_1&token=${token}`), deps),
 		);
 		clearInterval(tick);
 		expect(text).toContain(": latido\n\n");
@@ -137,7 +137,7 @@ describe("GET /api/events", () => {
 	it("al rotar el token, el flujo abierto con el viejo se cierra", async () => {
 		const { deps, store, add } = setup();
 		const token = await getOrCreateToken(store, CHANNEL);
-		const res = await handleEvents(new Request(`${BASE}?channel=jotis1&token=${token}`), {
+		const res = await handleEvents(new Request(`${BASE}?channel=jotis_1&token=${token}`), {
 			...deps,
 			stream: { ...deps.stream, maxMs: 60_000 },
 		});

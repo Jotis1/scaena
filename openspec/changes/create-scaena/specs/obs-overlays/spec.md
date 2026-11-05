@@ -90,10 +90,10 @@ El sistema SHALL ofrecer una página privada que liste cada overlay con su vista
 - **THEN** la URL mostrada incluye esa opción y la vista previa la refleja
 
 ### Requirement: Acceso al estudio con Twitch
-Las páginas privadas (overlays, recursos y conexión) SHALL exigir entrar con una cuenta de Twitch autorizada, hoy solo la del canal jotis1. Una cuenta no autorizada MUST NOT obtener sesión ni ver datos del estudio.
+Las páginas privadas (overlays, recursos y conexión) SHALL exigir entrar con una cuenta de Twitch autorizada, hoy solo la del canal jotis_1. Una cuenta no autorizada MUST NOT obtener sesión ni ver datos del estudio.
 
 #### Scenario: Entra el dueño del canal
-- **WHEN** jotis1 pulsa "Entrar con Twitch" y autoriza la app
+- **WHEN** jotis_1 pulsa "Entrar con Twitch" y autoriza la app
 - **THEN** entra en el estudio y la sesión dura 30 días
 
 #### Scenario: Entra otra cuenta

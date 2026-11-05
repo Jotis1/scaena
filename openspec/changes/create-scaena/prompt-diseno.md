@@ -1,4 +1,4 @@
-Diseña **Scaena**, la app de la suite jotis.me para mi canal de Twitch (twitch.tv/jotis1), con el sistema de diseño **Jotis.me** y su guía. Si una pantalla necesita algo que el sistema no tiene, márcalo con una nota en el lienzo en lugar de inventarlo.
+Diseña **Scaena**, la app de la suite jotis.me para mi canal de Twitch (twitch.tv/jotis_1), con el sistema de diseño **Jotis.me** y su guía. Si una pantalla necesita algo que el sistema no tiene, márcalo con una nota en el lienzo en lugar de inventarlo.
 
 ## Importante
 
@@ -8,8 +8,8 @@ Diseña **Scaena**, la app de la suite jotis.me para mi canal de Twitch (twitch.
   - `scaena.jotis.me/live`;
   - `scaena.jotis.me/videos?page=2`;
   - `scaena.jotis.me/studio/assets`;
-  - `scaena.jotis.me/overlay/jotis1/chat?translucent=1`;
-  - `scaena.jotis.me/overlay/jotis1/goal?type=subs&start=284&goal=300&token=…`.
+  - `scaena.jotis.me/overlay/jotis_1/chat?translucent=1`;
+  - `scaena.jotis.me/overlay/jotis_1/goal?type=subs&start=284&goal=300&token=…`.
 - **Que no sea genérico: que cuente una historia.** No quiero una plantilla de "página de streamer" con huecos rellenados. La web tiene que contar de qué va esto: jugar sin reloj, ver cada rincón, juegos que duran lo que tengan que durar.
   - Leída de arriba abajo, la portada debería sentirse como esa historia: quién juega y cómo, cuándo suele estar, si está ahora mismo y dónde verlo, y lo que ya ha quedado grabado en YouTube como el diario de esas partidas.
   - Esa misma idea tiene que notarse en las escenas, los paneles y el banner, para que todo parezca la misma voz.
@@ -26,7 +26,7 @@ Tiene tres partes:
 
 ## Contenido real (úsalo tal cual)
 
-- **Canal**: jotis1 en Twitch.
+- **Canal**: jotis_1 en Twitch.
 - **Lema corto**: "Juegos a mi ritmo, sin prisa."
 - **De qué va**, en dos párrafos:
   - "Un canal para jugar sin reloj. Me paro a mirar el paisaje, vuelvo atrás por el cofre que me dejé y no cambio de zona hasta verla entera. Entre partida y partida, ratos de Just Chatting."
@@ -39,7 +39,7 @@ Tiene tres partes:
   2. "Nada de spam."
   3. "Mi canal, mis normas: lo que no me parezca bien, fuera. Si te parece injusto, hay más canales."
 - **Paneles de Twitch**: "De qué va", "Horario", "Normas", "Vídeos" (acción: ver en YouTube) y "Redes".
-- **Escenas**: los textos por defecto de `StreamScene`, con canal "jotis1" y handle "twitch.tv/jotis1".
+- **Escenas**: los textos por defecto de `StreamScene`, con canal "jotis_1" y handle "twitch.tv/jotis_1".
 - **Datos de ejemplo**:
   - 1.284 espectadores, 2:14:05 en emisión, categoría "Elden Ring";
   - vídeos del canal: directos resubidos y editados, de hasta 3:12:40;
@@ -54,7 +54,7 @@ Tiene tres partes:
 2. Portada en directo: lo mismo, con un aviso arriba (estado, título, categoría y botón a Twitch).
 3. Vídeos: rejilla paginada de doce, con un vídeo en reproducción integrada; estados vacío, carga y error de YouTube.
 
-**B. Estudio.** Escritorio, en claro y en oscuro. Se entra con la cuenta de Twitch; hoy solo la mía, pero algún día podría haber más canales, así que no lo dibujes como algo exclusivo de jotis1:
+**B. Estudio.** Escritorio, en claro y en oscuro. Se entra con la cuenta de Twitch; hoy solo la mía, pero algún día podría haber más canales, así que no lo dibujes como algo exclusivo de jotis_1:
 
 1. Entrada: "Entrar con Twitch", y el aviso que ve una cuenta que no tiene acceso.
 2. Overlays: chat, alertas, eventos, meta, estado, cámara y las cuatro escenas. Cada uno con vista previa, opciones, la URL lista para copiar y un recordatorio de activar en OBS "Actualizar al hacer visible la escena", y el token de los overlays con un botón para rotarlo. Botones para lanzar una alerta de prueba de cada tipo.

@@ -25,8 +25,8 @@ Gracias, la historia funciona: no la cambies. Estas son las correcciones del dis
 ## Escenas montadas
 
 8. **La escena de juego y la de Just Chatting pasan a ser escenas listas para usar**, cada una con su URL, igual que las otras cuatro:
-   - `scaena.jotis.me/overlay/jotis1/scene/game`;
-   - `scaena.jotis.me/overlay/jotis1/scene/chatting`.
+   - `scaena.jotis.me/overlay/jotis_1/scene/game`;
+   - `scaena.jotis.me/overlay/jotis_1/scene/chatting`.
    
    Añádelas al estudio con su vista previa y sus opciones. Lo que va debajo (juego y cámara) lo pone OBS.
 9. **Just Chatting.** No bajes la opacidad de la meta y los eventos: así pierden contraste. Déjalos en segundo plano por tamaño y posición. Revisa también que la alerta no tape los mensajes del chat.

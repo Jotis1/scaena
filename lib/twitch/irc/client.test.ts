@@ -28,7 +28,7 @@ function fakeServer() {
 }
 
 const PRIVMSG = (id: string, text: string) =>
-	`@badges=;display-name=Ana;id=${id};user-id=1001 :ana!ana@ana.tmi.twitch.tv PRIVMSG #jotis1 :${text}\r\n`;
+	`@badges=;display-name=Ana;id=${id};user-id=1001 :ana!ana@ana.tmi.twitch.tv PRIVMSG #jotis_1 :${text}\r\n`;
 
 async function until(condition: () => boolean, ms = 3000) {
 	const start = Date.now();
@@ -50,19 +50,19 @@ afterEach(async () => {
 describe("cliente del chat", () => {
 	it("entra como anónimo con etiquetas y comandos, y se une al canal", async () => {
 		server = fakeServer();
-		client = connectChat({ channel: "Jotis1", url: server.url(), onEvent: () => {} });
+		client = connectChat({ channel: "Jotis_1", url: server.url(), onEvent: () => {} });
 		await until(() => (server.received[0]?.length ?? 0) >= 4);
 		const [cap, pass, nick, join] = server.received[0] as string[];
 		expect(cap).toBe("CAP REQ :twitch.tv/tags twitch.tv/commands");
 		expect(pass).toBe("PASS SCHMOOPIIE");
 		expect(nick).toMatch(/^NICK justinfan\d{5}$/);
-		expect(join).toBe("JOIN #jotis1");
+		expect(join).toBe("JOIN #jotis_1");
 	});
 
 	it("entrega los mensajes y responde a PING", async () => {
 		server = fakeServer();
 		const events: ChatEvent[] = [];
-		client = connectChat({ channel: "jotis1", url: server.url(), onEvent: (e) => events.push(e) });
+		client = connectChat({ channel: "jotis_1", url: server.url(), onEvent: (e) => events.push(e) });
 		await until(() => server.connections.length === 1 && (server.received[0]?.length ?? 0) >= 4);
 		server.last().send(`${PRIVMSG("a", "hola")}PING :tmi.twitch.tv\r\n`);
 		await until(
@@ -76,11 +76,11 @@ describe("cliente del chat", () => {
 		let state = initialChatState;
 		const states: string[] = [];
 		client = connectChat({
-			channel: "jotis1",
+			channel: "jotis_1",
 			url: server.url(),
 			backoff: [50, 100],
 			onEvent: (e) => {
-				state = reduceChat(state, e, { channel: "jotis1", hidden: [] });
+				state = reduceChat(state, e, { channel: "jotis_1", hidden: [] });
 			},
 			onState: (s) => states.push(s),
 		});
@@ -94,14 +94,14 @@ describe("cliente del chat", () => {
 		await until(() => visibleMessages(state).length === 2);
 
 		expect(visibleMessages(state).map((m) => m.text)).toEqual(["antes del corte", "después del corte"]);
-		expect(server.received[1]?.at(-1)).toBe("JOIN #jotis1");
+		expect(server.received[1]?.at(-1)).toBe("JOIN #jotis_1");
 		expect(states).toContain("disconnected");
 		expect(states.at(-1)).toBe("connected");
 	});
 
 	it("con RECONNECT vuelve a conectar sin esperar", async () => {
 		server = fakeServer();
-		client = connectChat({ channel: "jotis1", url: server.url(), backoff: [60_000], onEvent: () => {} });
+		client = connectChat({ channel: "jotis_1", url: server.url(), backoff: [60_000], onEvent: () => {} });
 		await until(() => (server.received[0]?.length ?? 0) >= 4);
 		server.last().send(":tmi.twitch.tv RECONNECT\r\n");
 		await until(() => server.connections.length === 2, 1000);
@@ -109,7 +109,12 @@ describe("cliente del chat", () => {
 
 	it("tras unirse, la primera caída espera la primera espera", async () => {
 		server = fakeServer();
-		client = connectChat({ channel: "jotis1", url: server.url(), backoff: [40, 400], onEvent: () => {} });
+		client = connectChat({
+			channel: "jotis_1",
+			url: server.url(),
+			backoff: [40, 400],
+			onEvent: () => {},
+		});
 		await until(() => (server.received[0]?.length ?? 0) >= 4);
 		const t0 = Date.now();
 		server.last().terminate();
@@ -126,7 +131,12 @@ describe("cliente del chat", () => {
 			arrivals.push(Date.now());
 			s.terminate();
 		});
-		client = connectChat({ channel: "jotis1", url: server.url(), backoff: [40, 400], onEvent: () => {} });
+		client = connectChat({
+			channel: "jotis_1",
+			url: server.url(),
+			backoff: [40, 400],
+			onEvent: () => {},
+		});
 		await until(() => arrivals.length === 3, 3000);
 		const [a, b, c] = arrivals as [number, number, number];
 		expect(b - a).toBeLessThan(300);
@@ -135,7 +145,7 @@ describe("cliente del chat", () => {
 
 	it("cerrar no deja reconexiones pendientes", async () => {
 		server = fakeServer();
-		client = connectChat({ channel: "jotis1", url: server.url(), backoff: [20], onEvent: () => {} });
+		client = connectChat({ channel: "jotis_1", url: server.url(), backoff: [20], onEvent: () => {} });
 		await until(() => server.connections.length === 1);
 		client.close();
 		await new Promise((r) => setTimeout(r, 150));

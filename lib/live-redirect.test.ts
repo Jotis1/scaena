@@ -11,14 +11,14 @@ const LIVE = {
 
 describe("/live", () => {
 	it("en directo, 302 a twitch.tv/<canal> sin caché", () => {
-		const r = liveRedirect(LIVE, "jotis1", "https://scaena.jotis.me");
+		const r = liveRedirect(LIVE, "jotis_1", "https://scaena.jotis.me");
 		expect(r.status).toBe(302);
-		expect(r.headers.get("location")).toBe("https://www.twitch.tv/jotis1");
+		expect(r.headers.get("location")).toBe("https://www.twitch.tv/jotis_1");
 		expect(r.headers.get("cache-control")).toBe("no-store");
 	});
 
 	it("sin directo, a la portada en el horario", () => {
-		const r = liveRedirect({ live: false }, "jotis1", "https://scaena.jotis.me");
+		const r = liveRedirect({ live: false }, "jotis_1", "https://scaena.jotis.me");
 		expect(r.status).toBe(302);
 		expect(r.headers.get("location")).toBe("https://scaena.jotis.me/#schedule");
 		expect(r.headers.get("cache-control")).toBe("no-store");

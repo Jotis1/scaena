@@ -25,7 +25,7 @@ class FakeSource extends EventTarget {
 }
 
 const ES = FakeSource as unknown as typeof EventSource;
-const URL_ = eventsUrl("http://localhost", { channel: "jotis1", token: "t" });
+const URL_ = eventsUrl("http://localhost", { channel: "jotis_1", token: "t" });
 
 beforeEach(() => {
 	FakeSource.all = [];
