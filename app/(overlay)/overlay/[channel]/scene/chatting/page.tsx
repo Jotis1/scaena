@@ -1,5 +1,6 @@
 import { ChattingScene } from "@/components/overlay/scenes/ChattingScene";
 import { sceneOptions } from "@/components/overlay/scenes/params";
+import { canvasOf, SceneCanvas } from "@/lib/overlay/canvas";
 import { profileForOverlay } from "@/lib/overlay/channel";
 import type { SearchParams } from "@/lib/overlay/params";
 
@@ -12,5 +13,12 @@ export default async function ChattingScenePage({
 	searchParams: Promise<SearchParams>;
 }) {
 	const profile = profileForOverlay((await params).channel);
-	return <ChattingScene profile={profile} o={sceneOptions(await searchParams)} />;
+	const q = await searchParams;
+	// `canvas=3440x1440`: lienzo lógico de 2580×1080 escalado a 4/3 (design.md de refine-site-and-ultrawide-scenes, decisión 7).
+	const canvas = canvasOf(q);
+	return (
+		<SceneCanvas canvas={canvas}>
+			<ChattingScene profile={profile} o={sceneOptions(q)} width={canvas.width} />
+		</SceneCanvas>
+	);
 }

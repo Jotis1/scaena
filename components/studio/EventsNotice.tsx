@@ -1,4 +1,5 @@
 import { Alert, Button } from "@jotis-me/react";
+import { AlertTriangle, ArrowRight } from "@untitledui/icons";
 import { eventsNotice } from "@/lib/studio/connection";
 import { connectionStatus } from "@/lib/twitch/eventsub/subscriptions";
 import { eventSubDeps } from "@/lib/twitch/server";
@@ -19,11 +20,11 @@ export async function EventsNotice({ channelId }: { channelId: string }) {
 	return (
 		<Alert
 			color="warning"
-			icon="alert-triangle"
+			icon={AlertTriangle}
 			title={notice.title}
 			description={notice.description}
 			actions={
-				<Button hierarchy="secondary" size="sm" href="/studio/connection" iconTrailing="arrow-right">
+				<Button hierarchy="secondary" size="sm" href="/studio/connection" iconTrailing={ArrowRight}>
 					{notice.action}
 				</Button>
 			}

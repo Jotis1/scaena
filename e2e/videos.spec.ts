@@ -51,7 +51,7 @@ test("el vídeo en reproducción lleva tipo, juego, duración, fecha y «Abrir e
 	await page.goto("/videos");
 	const now = page.getByRole("region", { name: "Reproduciendo" });
 	await expect(now.getByText("Directo resubido")).toBeVisible();
-	await expect(now.getByText("Cyberpunk 2077 - #1 - 3:12:40 - 29 oct 2026")).toBeVisible();
+	await expect(now.getByText("Cyberpunk 2077 #1, 3:12:40, 29 oct 2026")).toBeVisible();
 	await expect(now.getByRole("link", { name: "Abrir en YouTube" })).toHaveAttribute(
 		"href",
 		"https://www.youtube.com/watch?v=vid1",
@@ -66,43 +66,37 @@ test("pulsar una tarjeta la pone arriba, en la URL, y empieza a reproducirse", a
 		"Resumen 2",
 	);
 	await expect(page.locator("iframe")).toHaveAttribute("src", /embed\/vid2\?autoplay=1/);
-	await expect(page.getByRole("link", { name: /Resumen 2/ })).toContainText("Reproduciendo");
+	// El que suena no se repite en la rejilla.
+	await expect(page.getByRole("link", { name: /Resumen 2/ })).toHaveCount(0);
 });
 
 test("el filtro y la paginación cambian la URL y cuentan solo lo filtrado", async ({ page }) => {
+	const pager = page.getByRole("navigation", { name: "Más vídeos" });
 	await page.goto("/videos");
-	// Tres páginas en todos: la 1 marcada y ninguna 4.
-	await expect(
-		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 1" }),
-	).toHaveAttribute("aria-current", "page");
-	await expect(
-		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 3" }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 4" }),
-	).toHaveCount(0);
+	// Página 1 de tres: solo «Anteriores», a la 2.
+	await expect(pager.getByRole("link", { name: /Más recientes/ })).toHaveCount(0);
+	await expect(pager.getByRole("link", { name: /Anteriores/ })).toHaveAttribute("href", "/videos?page=2");
 	await page.getByRole("tab", { name: "Directos" }).click();
 	await expect(page).toHaveURL(/\/videos\?type=live$/);
-	await expect(
-		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 2" }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("navigation", { name: "Paginación" }).getByRole("button", { name: "Página 3" }),
-	).toHaveCount(0);
-	await expect(page.getByText("Editado", { exact: true })).toHaveCount(0);
-	await page.getByRole("button", { name: "Anteriores" }).click();
+	await expect(page.getByText(/^Editado, /)).toHaveCount(0);
+	await pager.getByRole("link", { name: /Anteriores/ }).click();
 	await expect(page).toHaveURL(/\/videos\?type=live&page=2$/);
-	await expect(page.locator('a[href^="/videos?"][href*="v=vid"]')).toHaveCount(3);
-	await page.getByRole("button", { name: "Más recientes" }).click();
+	// 15 directos: en la 2 quedan 3, uno arriba y dos en la rejilla. Es la última: no hay «Anteriores».
+	await expect(page.locator('a[href^="/videos?"][href*="v=vid"]')).toHaveCount(2);
+	await expect(pager.getByRole("link", { name: /Anteriores/ })).toHaveCount(0);
+	await pager.getByRole("link", { name: /Más recientes/ }).click();
 	await expect(page).toHaveURL(/\/videos\?type=live$/);
 });
 
-test("página 2 de todos: los vídeos 13 a 24", async ({ page }) => {
+test("página 2 de todos: el 13 arriba y del 14 al 24 en la rejilla", async ({ page }) => {
 	await page.goto("/videos?page=2");
 	const ids = await page
 		.locator('a[href^="/videos?"][href*="v=vid"]')
 		.evaluateAll((as) => as.map((a) => new URL((a as HTMLAnchorElement).href).searchParams.get("v")));
-	expect(ids).toEqual(Array.from({ length: 12 }, (_, i) => `vid${i + 13}`));
+	expect(ids).toEqual(Array.from({ length: 11 }, (_, i) => `vid${i + 14}`));
+	await expect(page.getByRole("region", { name: "Reproduciendo" }).getByRole("heading")).toHaveText(
+		"Parte 13",
+	);
 });
 
 test("el foco recorre la página en orden de lectura", async ({ page }) => {
@@ -112,7 +106,8 @@ test("el foco recorre la página en orden de lectura", async ({ page }) => {
 		await page.keyboard.press("Tab");
 		const top = await page.evaluate(() => {
 			const el = document.activeElement as HTMLElement;
-			if (el === document.body) return -1;
+			// Hasta el pie: sus columnas se recorren una a una, de arriba abajo.
+			if (el === document.body || el.closest("footer")) return -1;
 			return Math.round(el.getBoundingClientRect().top + window.scrollY);
 		});
 		if (top < 0) break;
@@ -134,6 +129,7 @@ test("sin vídeos: estado vacío con enlace al canal", async ({ page }) => {
 	await seed([]);
 	await page.goto("/videos");
 	await expect(page.getByText("Aún no hay vídeos")).toBeVisible();
+	await expect(page.getByText("El primero llega en cuanto acabe un directo.")).toBeVisible();
 	await expect(page.getByRole("link", { name: "Ver el canal en YouTube" })).toHaveAttribute(
 		"href",
 		"https://www.youtube.com/@jotis_1",
@@ -151,4 +147,90 @@ test("YouTube caído y sin copia: «Reintentar» es el único principal y «Abri
 	await expect(primary).toHaveCount(1);
 	await expect(primary).toHaveText("Reintentar");
 	await expect(page.getByRole("link", { name: "Abrir YouTube" })).not.toHaveClass(/bg-brand-solid/);
+});
+
+// specs/channel-site, «Buscador de vídeos» y «Buscar dentro de un filtro».
+test.describe("búsqueda", () => {
+	// El buscador que se ve: la cabecera lo pinta también en la fila móvil y en el panel del menú.
+	const searchbox = (page: import("@playwright/test").Page) =>
+		page.getByRole("searchbox", { name: "Buscar vídeos" }).locator("visible=true");
+
+	test("buscar desde la portada lleva a /videos?q=… con los resultados y el campo conserva el texto", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await searchbox(page).fill("cyberpunk");
+		await searchbox(page).press("Enter");
+		await expect(page).toHaveURL(/\/videos\?q=cyberpunk$/);
+		await expect(searchbox(page)).toHaveValue("cyberpunk");
+		// Solo los directos de Cyberpunk 2077: ningún editado («Resumen …»).
+		await expect(page.getByRole("region", { name: "Reproduciendo" }).getByRole("heading")).toHaveText(
+			"Parte 1",
+		);
+		await expect(page.getByText(/^Editado, /)).toHaveCount(0);
+		await expect(page.getByText(/^Directo resubido\. Cyberpunk 2077 #/)).toHaveCount(11);
+	});
+
+	test("buscar dentro de un filtro: pestañas, paginación y tarjetas conservan la búsqueda", async ({
+		page,
+	}) => {
+		// Los editados también hablan de Cyberpunk: así el filtro de tipo cuenta.
+		await seed(VIDEOS.map((v, i) => (i % 2 ? { ...v, title: `Resumen ${i + 1} de Cyberpunk` } : v)));
+		const pager = page.getByRole("navigation", { name: "Más vídeos" });
+		await page.goto("/videos?type=live&q=cyberpunk");
+		await expect(searchbox(page)).toHaveValue("cyberpunk");
+		await expect(page.getByText(/^Editado, /)).toHaveCount(0);
+		await expect(pager.getByRole("link", { name: /Anteriores/ })).toHaveAttribute(
+			"href",
+			"/videos?type=live&q=cyberpunk&page=2",
+		);
+		const cards = page.locator('a[href^="/videos?"][href*="v=vid"]');
+		await expect(cards.first()).toHaveAttribute("href", /^\/videos\?type=live&q=cyberpunk&v=vid\d+$/);
+		await pager.getByRole("link", { name: /Anteriores/ }).click();
+		await expect(page).toHaveURL(/\/videos\?type=live&q=cyberpunk&page=2$/);
+		// 15 directos: en la 2 quedan 3, uno arriba y dos en la rejilla.
+		await expect(cards).toHaveCount(2);
+
+		await page.getByRole("tab", { name: "Todos" }).click();
+		await expect(page).toHaveURL(/\/videos\?q=cyberpunk$/);
+		await expect(page.getByText(/^Editado, /).first()).toBeVisible();
+		await page.getByRole("tab", { name: "Editados" }).click();
+		await expect(page).toHaveURL(/\/videos\?type=edited&q=cyberpunk$/);
+		await expect(page.getByText(/^Directo resubido\. /)).toHaveCount(0);
+	});
+
+	test("sin resultados: estado vacío con el texto y «Quitar la búsqueda», no «Aún no hay vídeos»", async ({
+		page,
+	}) => {
+		await page.goto("/videos?type=live&q=zelda");
+		await expect(page.getByRole("heading", { name: 'Nada con "zelda"' })).toBeVisible();
+		await expect(page.getByText("Aún no hay vídeos")).toHaveCount(0);
+		await expect(page.getByText("Aún no hay directos resubidos")).toHaveCount(0);
+		const clear = page.getByRole("link", { name: "Quitar la búsqueda" });
+		await expect(clear).toHaveAttribute("href", "/videos?type=live");
+		const { violations } = await new AxeBuilder({ page }).analyze();
+		expect(violations.map((v) => v.id)).toEqual([]);
+		await clear.click();
+		await expect(page).toHaveURL(/\/videos\?type=live$/);
+		await expect(searchbox(page)).toHaveValue("");
+		await expect(page.getByRole("region", { name: "Reproduciendo" })).toBeVisible();
+	});
+
+	test("búsqueda vacía: enviar sin texto lleva a /videos con todos", async ({ page }) => {
+		await page.goto("/videos?q=cyberpunk");
+		await searchbox(page).fill("");
+		await searchbox(page).press("Enter");
+		await expect(page).toHaveURL(/\/videos$/);
+		await expect(page.getByText(/^Editado, /).first()).toBeVisible();
+		await expect(
+			page.getByRole("navigation", { name: "Más vídeos" }).getByRole("link", { name: /Anteriores/ }),
+		).toHaveAttribute("href", "/videos?page=2");
+	});
+
+	test("axe sin errores con una búsqueda activa", async ({ page }) => {
+		await page.goto("/videos?q=cyberpunk");
+		await expect(searchbox(page)).toHaveValue("cyberpunk");
+		const { violations } = await new AxeBuilder({ page }).analyze();
+		expect(violations.map((v) => v.id)).toEqual([]);
+	});
 });

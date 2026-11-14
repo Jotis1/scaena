@@ -1,7 +1,8 @@
 // Esquema del perfil del canal (specs/channel-profile, design.md, decisión 8). Es la única fuente del
 // contenido: la web, las escenas, los paneles y el banner leen de aquí y no repiten textos por su cuenta.
-import { iconNames } from "@jotis-me/icons";
+
 import { z } from "zod";
+import { PROFILE_ICON_NAMES } from "../icons";
 
 /** Emojis y pictogramas: la guía de Regula no los admite en la interfaz. */
 const EMOJI = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}]/u;
@@ -32,12 +33,27 @@ export const alertPhrase = uiText.max(120, "como mucho 120 caracteres").superRef
 			});
 });
 
-const icon = z.enum(iconNames as [string, ...string[]], { message: "no es un icono de Regula" });
+const icon = z.enum(PROFILE_ICON_NAMES, {
+	message: `no es un icono del perfil; se pueden usar ${PROFILE_ICON_NAMES.join(", ")}`,
+});
 
 const scene = z.object({
 	badge: uiText,
 	title: uiText.max(24, "como mucho 24 caracteres (guía de Regula)"),
 	subtitle: uiText,
+});
+
+/** Un paso de «Cómo va un directo» (diseño: «Portada»). */
+const step = z.object({
+	/** El nombre del paso en la barra de pasos: «La partida». */
+	title: uiText.max(24, "como mucho 24 caracteres"),
+	/** La línea bajo el nombre: «Modo historia». Sin ella, en «Antes» va la hora de inicio de la franja. */
+	hint: uiText.max(24, "como mucho 24 caracteres").optional(),
+	/** El titular junto a la escena. */
+	heading: uiText,
+	text: uiText,
+	/** Dónde pasa: va en la etiqueta junto al titular. */
+	where: z.enum(["twitch", "youtube"]),
 });
 
 const panel = z
@@ -78,11 +94,10 @@ export const profileSchema = z
 		}),
 		tagline: uiText,
 		description: z.array(uiText).min(1).max(4),
-		/** «Ajustes de partida» de la portada. */
-		playSettings: z
-			.array(z.object({ title: uiText, text: uiText }))
-			.min(1)
-			.max(6),
+		/** Textos propios de la web: qué es (portada) y la línea del pie. */
+		site: z.object({ intro: uiText, footer: uiText }),
+		/** «Cómo va un directo» en la portada: los cuatro pasos, en este orden. */
+		journey: z.object({ before: step, game: step, chatting: step, after: step }),
 		schedule: z
 			.object({
 				start: time,

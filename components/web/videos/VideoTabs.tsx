@@ -2,6 +2,7 @@
 
 import { Tabs } from "@jotis-me/react";
 import { useRouter } from "next/navigation";
+import { videosHref } from "@/lib/youtube/href";
 import type { VideoFilter } from "@/lib/youtube/videos";
 
 const TABS: { id: VideoFilter; label: string }[] = [
@@ -10,8 +11,8 @@ const TABS: { id: VideoFilter; label: string }[] = [
 	{ id: "edited", label: "Editados" },
 ];
 
-/** «Todos», «Directos» y «Editados» (`type`). Cambiar de pestaña vuelve a la primera página. */
-export function VideoTabs({ value }: { value: VideoFilter }) {
+/** «Todos», «Directos» y «Editados» (`type`). Cambiar de pestaña vuelve a la primera página y conserva la búsqueda. */
+export function VideoTabs({ value, q }: { value: VideoFilter; q?: string }) {
 	const router = useRouter();
 	return (
 		<Tabs
@@ -20,7 +21,7 @@ export function VideoTabs({ value }: { value: VideoFilter }) {
 			type="button-gray"
 			size="sm"
 			aria-label="Tipo de vídeo"
-			onChange={(id) => router.push(id === "all" ? "/videos" : `/videos?type=${id}`, { scroll: false })}
+			onChange={(id) => router.push(videosHref({ type: id as VideoFilter, q }), { scroll: false })}
 		/>
 	);
 }

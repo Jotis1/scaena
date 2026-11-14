@@ -2,6 +2,8 @@
 // el título»). `^(.+) - (.+) #(\d+)$`: el primer grupo es codicioso, así que el último « - » separa el título del
 // juego. Si encaja, es un directo resubido; si no, un editado con el título tal cual.
 
+import { formatDuration } from "../format";
+
 export type VideoKind = "live" | "edited";
 
 export type ParsedTitle =
@@ -21,7 +23,18 @@ export function parseTitle(raw: string): ParsedTitle {
 /** Lo que se lee en la tarjeta (diseño: «Directo resubido», «Editado»). */
 export const KIND_LABELS: Record<VideoKind, string> = { live: "Directo resubido", edited: "Editado" };
 
-/** Juego y número de un directo, con el guion del diseño: «Cyberpunk 2077 - #1». */
+/** Juego y número de un directo, como en el diseño: «Cyberpunk 2077 #1». */
 export function gameLine(p: ParsedTitle): string | null {
-	return p.kind === "live" ? `${p.game} - #${p.number}` : null;
+	return p.kind === "live" ? `${p.game} #${p.number}` : null;
+}
+
+/**
+ * La línea de una tarjeta de vídeo (diseño: «Lo último en YouTube» y «Vídeos»; specs/channel-site, «Página de
+ * vídeos»): «Directo resubido. Cyberpunk 2077 #1, 3:12:40» o «Editado, 10:04».
+ */
+export function cardLine(p: ParsedTitle, seconds: number): string {
+	const duration = formatDuration(seconds);
+	return p.kind === "live"
+		? `${KIND_LABELS.live}. ${gameLine(p)}, ${duration}`
+		: `${KIND_LABELS.edited}, ${duration}`;
 }

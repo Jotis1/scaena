@@ -83,3 +83,53 @@ test("una escena o un canal que no existen dan 404", async ({ request }) => {
 	expect((await request.get(`${BASE}/intermedio`)).status()).toBe(404);
 	expect((await request.get("/overlay/otrocanal/scene/starting")).status()).toBe(404);
 });
+
+// specs/obs-overlays, «Lienzo de emisión»: `canvas=3440x1440` en una fuente de 3440×1440.
+test.describe("ultrapanorámico", () => {
+	test.use({ viewport: { width: 3440, height: 1440 } });
+
+	const sizeOf = (page: Page) =>
+		page.evaluate(() => {
+			const canvas = document.body.querySelector(":scope > div:not([hidden])") as HTMLElement;
+			const r = canvas.getBoundingClientRect();
+			return {
+				canvas: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)],
+				scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
+			};
+		});
+
+	for (const variant of Object.keys(COPY)) {
+		test(`escena «${variant}» en ultrapanorámico: llena 3440×1440 sin recortes ni barras`, async ({
+			page,
+		}) => {
+			const errors = consoleErrors(page);
+			await page.goto(`${BASE}/${variant}?canvas=3440x1440`);
+			await expect(page.getByText("twitch.tv/jotis_1")).toBeVisible();
+			expect(await sizeOf(page)).toEqual({ canvas: [0, 0, 3440, 1440], scroll: [3440, 1440] });
+			expect(errors).toEqual([]);
+			// Para revisarlas a mano: `E2E_SHOTS=<carpeta>` guarda la captura.
+			if (process.env.E2E_SHOTS)
+				await page.screenshot({ path: `${process.env.E2E_SHOTS}/${variant}.png` });
+		});
+	}
+
+	test("escena en ultrapanorámico: el pie de «offline» va de lado a lado", async ({ page }) => {
+		await page.goto(`${BASE}/offline?canvas=3440x1440`);
+		const channel = await page.getByText("jotis_1", { exact: true }).boundingBox();
+		const handle = await page.getByText("twitch.tv/jotis_1").boundingBox();
+		if (!channel || !handle) throw new Error("falta el pie");
+		// `left-20 right-20` del lienzo lógico, a 4/3: 107 px a cada lado.
+		expect(channel.x).toBeLessThan(200);
+		expect(handle.x + handle.width).toBeGreaterThan(3440 - 200);
+	});
+
+	test("lienzo no reconocido: `canvas=1234x567` se dibuja a 1920×1080", async ({ page }) => {
+		await page.goto(`${BASE}/offline?canvas=1234x567`);
+		await expect(page.getByText("twitch.tv/jotis_1")).toBeVisible();
+		expect((await sizeOf(page)).canvas).toEqual([0, 0, 1920, 1080]);
+		await page.goto("/overlay/jotis_1/scene/game?canvas=1234x567");
+		await expect(page.locator("[data-scene=game]")).toBeVisible();
+		const game = await page.locator("[data-scene=game]").boundingBox();
+		expect([game?.width, game?.height]).toEqual([1920, 1080]);
+	});
+});

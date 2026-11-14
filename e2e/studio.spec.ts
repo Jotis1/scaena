@@ -33,6 +33,26 @@ test.describe("armazón", () => {
 		await expect(page.getByRole("combobox", { name: /canal/i })).toHaveCount(0);
 	});
 
+	test("a 1920 px el contenido va centrado en el espacio a la derecha de la barra lateral", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1920, height: 1080 });
+		for (const path of ["/studio/overlays", "/studio/assets", "/studio/connection"]) {
+			await page.goto(path);
+			const gaps = await page.locator("main").evaluate((main) => {
+				// La barra lateral es lo de antes del contenedor de `main`.
+				const sidebar = main.parentElement?.previousElementSibling;
+				if (!sidebar) throw new Error("no hay barra lateral antes del contenido");
+				const s = sidebar.getBoundingClientRect();
+				const m = main.getBoundingClientRect();
+				return { left: m.left - s.right, right: document.documentElement.clientWidth - m.right };
+			});
+			// Con 1180 px de máximo, sobra sitio a los dos lados.
+			expect(gaps.left, path).toBeGreaterThan(50);
+			expect(Math.abs(gaps.left - gaps.right), path).toBeLessThan(2);
+		}
+	});
+
 	test("la barra lateral es fija: la cuenta y «Salir» se ven sin bajar, también al final de la página", async ({
 		page,
 	}) => {
@@ -43,6 +63,21 @@ test.describe("armazón", () => {
 		await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 		await expect(logout).toBeInViewport();
 		await expect(page.getByText("Cuenta de Twitch")).toBeInViewport();
+	});
+
+	test("sin migas: cada página lleva el botón de tema en su cabecera", async ({ page }) => {
+		for (const path of ["/studio/overlays", "/studio/assets", "/studio/connection"]) {
+			await page.goto(path);
+			await expect(page.getByRole("navigation", { name: "Ruta en el estudio" })).toHaveCount(0);
+			const header = page
+				.locator("main")
+				.getByRole("heading", { level: 1 })
+				.locator("xpath=ancestor::header[1]");
+			await expect(
+				header.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ }),
+				path,
+			).toBeVisible();
+		}
 	});
 
 	test("«Salir» cierra la sesión", async ({ page }) => {
@@ -104,6 +139,86 @@ test.describe("overlays", () => {
 		await expect(page.getByRole("switch", { name: "Enseñar espectadores" })).not.toBeChecked();
 	});
 
+	test("«Piezas» y «Escenas»: seis y seis, la pestaña en la URL y la URL de juego se copia", async ({
+		page,
+		context,
+	}) => {
+		await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+		await page.goto("/studio/overlays");
+		const tabs = page.getByRole("tablist", { name: "Fuentes de navegador" });
+		await expect(tabs.getByRole("tab", { name: /Piezas/ })).toHaveAttribute("aria-selected", "true");
+		await expect(page.getByRole("article")).toHaveCount(6);
+		await expect(page.getByRole("article", { name: "Juego" })).toHaveCount(0);
+		await tabs.getByRole("tab", { name: /Escenas/ }).click();
+		await expect(page).toHaveURL(/\/studio\/overlays\?tab=scenes$/);
+		await expect(page.getByRole("article")).toHaveCount(6);
+		await expect(page.getByRole("article", { name: "Chat", exact: true })).toHaveCount(0);
+		const game = page.getByRole("article", { name: "Juego" });
+		await expect(game.locator('[data-preview="scene/game"]')).toBeVisible();
+		await game.getByRole("button", { name: "Copiar" }).click();
+		await expect(game.getByRole("button", { name: "Copiada" })).toBeVisible();
+		expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
+			/\/overlay\/jotis_1\/scene\/game/,
+		);
+		// Recargar no pierde la pestaña.
+		await page.reload();
+		await expect(page.getByRole("article", { name: "Juego" })).toBeVisible();
+		// La indicación de OBS va una vez, en la cabecera.
+		await expect(page.getByText(/Actualizar al hacer visible la escena/)).toHaveCount(1);
+	});
+
+	test("escenas en ultrapanorámico: «3440 × 1440» cambia las seis URL, las insignias y las vistas previas", async ({
+		page,
+	}) => {
+		const SCENES = ["game", "chatting", "starting", "brb", "ending", "offline"];
+		await page.goto("/studio/overlays?tab=scenes");
+		const urls = page.locator('[data-url^="scene/"]');
+		await expect(urls).toHaveCount(6);
+		for (const url of await urls.all()) await expect(url).not.toHaveValue(/canvas=/);
+		await expect(page.getByRole("article").getByText("1920 × 1080", { exact: true })).toHaveCount(6);
+		const preview = page.locator('[data-preview="scene/game"]');
+		expect((await preview.boundingBox())?.height).toBeCloseTo(202, 0);
+
+		await page
+			.getByRole("button", { name: /Lienzo/ })
+			.or(page.getByRole("combobox", { name: "Lienzo" }))
+			.click();
+		await page.getByRole("option", { name: "3440 × 1440" }).click();
+		await expect(page).toHaveURL(/\/studio\/overlays\?tab=scenes&canvas=3440x1440$/);
+		for (const kind of SCENES)
+			await expect(page.locator(`[data-url="scene/${kind}"]`), kind).toHaveValue(/canvas=3440x1440/);
+		await expect(page.getByRole("article").getByText("3440 × 1440", { exact: true })).toHaveCount(6);
+		// 21:9: 360 × 151.
+		for (const kind of SCENES) {
+			const b = await page.locator(`[data-preview="scene/${kind}"]`).boundingBox();
+			expect(
+				[b?.width, b?.height].map((n) => Math.round(n ?? 0)),
+				kind,
+			).toEqual([360, 151]);
+		}
+		// La escena llena la vista previa, sin bandas: el lienzo de juego mide lo mismo que la caja.
+		const game = await preview.locator("[data-scene=game]").boundingBox();
+		expect(Math.round(game?.width ?? 0)).toBe(360);
+
+		// Recargar no pierde el lienzo, y las piezas no lo llevan.
+		await page.reload();
+		await expect(page.locator('[data-url="scene/offline"]')).toHaveValue(/canvas=3440x1440/);
+		await page.getByRole("tab", { name: /Piezas/ }).click();
+		await expect(page).toHaveURL(/\/studio\/overlays$/);
+		for (const url of await page.locator("[data-url]").all())
+			await expect(url).not.toHaveValue(/canvas=/);
+		await page.getByRole("tab", { name: /Escenas/ }).click();
+		await expect(page).toHaveURL(/\?tab=scenes&canvas=3440x1440$/);
+	});
+
+	test("la cuenta atrás de «Empezando» cambia la URL", async ({ page }) => {
+		await page.goto("/studio/overlays?tab=scenes");
+		const starting = page.getByRole("article", { name: "Empezando" });
+		await expect(starting.locator('[data-url="scene/starting"]')).toHaveValue(/minutes=5/);
+		await starting.getByRole("button", { name: /Sumar/ }).click();
+		await expect(starting.locator('[data-url="scene/starting"]')).toHaveValue(/minutes=6/);
+	});
+
 	test("cancelar la confirmación no rota el token", async ({ page }) => {
 		await page.goto("/studio/overlays");
 		const before = await redis("GET", `channel:${CHANNEL_ID}:token`);
@@ -153,7 +268,7 @@ test.describe("overlays", () => {
 		).toHaveValue("Entran {espectadores} de golpe.");
 	});
 
-	test("«Raid - 1.284» hace entrar una alerta de raid con su frase en el overlay abierto en otra pestaña", async ({
+	test("«Raid de 1.284» hace entrar una alerta de raid con su frase en el overlay abierto en otra pestaña", async ({
 		page,
 		context,
 	}) => {
@@ -163,8 +278,8 @@ test.describe("overlays", () => {
 		await obs.goto(`/overlay/jotis_1/alerts?token=${token}`);
 		// Que el flujo esté abierto antes de disparar.
 		await obs.waitForResponse((r) => r.url().includes("/api/events") && r.status() === 200);
-		await page.getByRole("button", { name: "Raid - 1.284" }).click();
-		await expect(page.getByText("Enviada: Raid - 1.284.")).toBeVisible();
+		await page.getByRole("button", { name: "Raid de 1.284" }).click();
+		await expect(page.getByText("Enviada: Raid de 1.284.")).toBeVisible();
 		const card = obs.getByRole("status");
 		await expect(card).toContainText("Canal de prueba", { timeout: 10_000 });
 		await expect(card).toContainText("Llega con 1.284 personas. Bienvenidas.");

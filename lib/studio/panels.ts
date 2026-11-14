@@ -1,6 +1,7 @@
 // Paneles y banner del perfil de Twitch a partir del perfil del canal (specs/twitch-profile-assets; design.md,
 // decisión 11). Cada texto sale de un solo sitio del perfil: un panel con `from` toma los párrafos de la
 // descripción o las normas; uno con `rows`, las filas del horario o de las redes.
+import type { ProfileIconName } from "../icons";
 import type { Profile } from "../profile";
 import { bannerRows, panelRows } from "../profile/schedule";
 import { linkedSocials, SOCIAL_NAMES, socialHandle } from "../profile/socials";
@@ -8,13 +9,13 @@ import { linkedSocials, SOCIAL_NAMES, socialHandle } from "../profile/socials";
 export interface PanelData {
 	slug: string;
 	title: string;
-	icon: string;
+	icon: ProfileIconName;
 	paragraphs: string[];
 	rows?: { label: string; value: string }[];
 	action?: { label: string; href: string };
 	/** Nombre del PNG: `panel-<slug>.png`. */
 	file: string;
-	/** Por qué no lleva enlace, si no lo lleva (diseño: «Recursos»). */
+	/** Por qué no lleva enlace, cuando no es evidente: el panel de redes con más de una (diseño: «Recursos»). */
 	noLinkReason?: string;
 }
 
@@ -54,8 +55,8 @@ export function panelsOf(p: Profile): PanelData[] {
 			noLinkReason: action
 				? undefined
 				: panel.rows === "socials" && socials.length > 1
-					? `Sin enlace: Twitch solo admite uno por panel y aquí hay ${socials.length === 2 ? "dos" : socials.length} redes.`
-					: "Sin enlace: este panel solo se lee.",
+					? `Va sin enlace: Twitch admite uno por panel y aquí hay ${socials.length === 2 ? "dos" : socials.length} redes.`
+					: undefined,
 		};
 	});
 }

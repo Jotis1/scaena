@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@jotis-me/react";
+import { RefreshCw01 } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -12,7 +13,7 @@ export function RetryButton() {
 		<Button
 			hierarchy="primary"
 			size="md"
-			iconLeading="refresh-cw-01"
+			iconLeading={RefreshCw01}
 			loading={pending}
 			onClick={() => start(() => router.refresh())}
 		>

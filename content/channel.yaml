@@ -13,21 +13,40 @@ youtube:
 tagline: Juegos a mi ritmo, sin prisa.
 
 description:
-    - Un canal para jugar sin reloj. Me paro a mirar el paisaje, vuelvo atrás por el cofre que me dejé y no cambio de zona hasta verla entera. Entre partida y partida, ratos de Just Chatting.
-    - Si te gusta ir con calma, quédate. Si tienes prisa, te entiendo, pero aquí no.
+    - "Un canal para jugar sin reloj: miro cada rincón, vuelvo por el cofre que me dejé y no cambio de zona hasta verla entera."
+    - Entre partida y partida, ratos de Just Chatting.
 
-# «Ajustes de partida»: filas fijas, sin controles.
-playSettings:
-    - title: Ver cada rincón
-      text: No cambio de zona hasta verla entera.
-    - title: Volver por el cofre
-      text: El que me dejé atrás.
-    - title: Modo historia
-      text: Nada de competitivos.
-    - title: Juegos de miedo
-      text: Aunque lo paso mal.
-    - title: Duración de cada juego
-      text: Lo que tenga que durar.
+# Textos de la web: qué es (portada) y la línea del pie.
+site:
+    intro: Scaena es la web del canal de Twitch de Jotis. Aquí ves si hay directo, cómo va uno y dónde queda cada partida cuando acaba.
+    footer: Juegos en modo historia y ratos de charla, sin prisa.
+
+# «Cómo va un directo» en la portada. `hint` es la línea bajo el nombre del paso; sin ella, en «Antes» va la
+# hora de inicio de la franja. `where` (twitch o youtube) es la etiqueta junto al titular.
+journey:
+    before:
+        title: Antes
+        heading: Aviso y cuenta atrás
+        text: No hay días fijos. Si sigues el canal, Twitch te avisa al empezar, y la cuenta atrás deja unos minutos para llegar con calma y algo de beber.
+        where: twitch
+    game:
+        title: La partida
+        hint: Modo historia
+        heading: La partida, con el chat en voz alta
+        text: "Juegos de historia, de miedo incluidos, aunque lo pase mal. Miro cada rincón, vuelvo por el cofre que me dejé y leo el chat en voz alta: lo que escribas acaba en el directo."
+        where: twitch
+    chatting:
+        title: La charla
+        hint: Just Chatting
+        heading: Just Chatting, de lo que surja
+        text: "Entre partida y partida, o un rato entero. Sin guion: la cámara grande, el chat al lado y lo que vaya saliendo."
+        where: twitch
+    after:
+        title: Después
+        hint: En YouTube
+        heading: El directo se queda en YouTube
+        text: Cada directo se sube entero, con su juego y su número de episodio, y de vez en cuando un editado con lo mejor. Para avisos y charla fuera del directo, está el Discord.
+        where: youtube
 
 # Franja habitual, no una cita. Sin `days` (monday…sunday), se muestra «Sin fijar».
 schedule:
@@ -56,7 +75,7 @@ socials:
 rules:
     - Pórtate bien. Si no sabes cómo, la escuela sigue abierta.
     - Nada de spam.
-    - "Mi canal, mis normas: lo que no me parezca bien, fuera. Si te parece injusto, hay más canales."
+    - Mi canal, mis normas. Si te parece injusto, hay más canales.
 
 panels:
     - slug: de-que-va
@@ -67,7 +86,7 @@ panels:
       title: Horario
       icon: clock
       paragraphs:
-          - Lo habitual, no una cita. Hay días sin directo y días en los que la partida se alarga.
+          - Lo habitual, no una cita. Hay días sin directo y días en que la partida se alarga.
       rows: schedule
     - slug: normas
       title: Normas
@@ -78,7 +97,7 @@ panels:
       title: Vídeos
       icon: play
       paragraphs:
-          - Los directos, resubidos enteros, y los editados. El diario de partidas, en YouTube.
+          - Los directos, subidos enteros, y algún editado con lo mejor.
       action:
           text: Ver en YouTube
           url: https://www.youtube.com/@jotis_1

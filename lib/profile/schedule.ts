@@ -42,6 +42,11 @@ export function shortSlotText(s: Schedule): string {
 	return `${shortTime(s.start)}-${shortTime(s.end)} h`;
 }
 
+/** Portada, junto al estado del directo: `Suele haber directo de 17:00 a 20:00.` */
+export function usuallyLiveText(s: Schedule): string {
+	return `Suele haber directo de ${s.start} a ${s.end}.`;
+}
+
 /** Pie de las escenas: `Normalmente, de 17:00 a 20:00`. */
 export function sceneFooter(s: Schedule): string {
 	return `Normalmente, de ${s.start} a ${s.end}`;

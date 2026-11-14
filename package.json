@@ -22,11 +22,11 @@
 		"ci": "biome ci . && bun run check:colors && tsc --noEmit && vitest run && bun run build"
 	},
 	"dependencies": {
-		"@jotis-me/icons": "^0.2.0",
-		"@jotis-me/react": "^0.2.0",
+		"@jotis-me/react": "^0.8.1",
 		"@prisma/adapter-neon": "^7.10.1",
 		"@prisma/adapter-pg": "^7.10.1",
 		"@prisma/client": "^7.10.1",
+		"@untitledui/icons": "0.0.23",
 		"@upstash/redis": "^1.41.0",
 		"better-auth": "^1.7.17",
 		"fflate": "^0.8.3",

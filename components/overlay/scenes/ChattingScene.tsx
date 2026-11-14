@@ -10,11 +10,12 @@ import { CAMERA_HOLE, ChattingLayout } from "./layouts";
 import type { SceneOptions } from "./params";
 
 /** Escena de Just Chatting en vivo (design.md, decisión 15). La cámara la pone OBS por el hueco del fondo. */
-export function ChattingScene({ profile, o }: { profile: Profile; o: SceneOptions }) {
+export function ChattingScene({ profile, o, width }: { profile: Profile; o: SceneOptions; width?: number }) {
 	const channel = profile.twitch.login;
 	return (
 		<ChannelEventsProvider channel={channel} token={o.token} since={o.since}>
 			<ChattingLayout
+				width={width}
 				status={<LiveStatusPill channel={channel} viewers={false} />}
 				alerts={<LiveAlerts message durationMs={7000} />}
 				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} /> : null}

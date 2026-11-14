@@ -42,8 +42,11 @@ test.describe("cabecera y tema", () => {
 			const page = await context.newPage();
 			await page.goto("/");
 			const header = page.locator("header").first();
-			await expect(header.getByRole("img", { name: "Scaena" })).toBeVisible();
-			const name = header.getByText("Scaena", { exact: true });
+			// `HeaderNav` lleva la fila de escritorio y la de móvil; se mira la que se ve.
+			await expect(
+				header.getByRole("img", { name: "Scaena" }).locator("visible=true").first(),
+			).toBeVisible();
+			const name = header.getByText("Scaena", { exact: true }).locator("visible=true").first();
 			const font = await name.evaluate((el) => {
 				const s = getComputedStyle(el);
 				return { family: s.fontFamily, weight: s.fontWeight };
@@ -51,28 +54,107 @@ test.describe("cabecera y tema", () => {
 			expect(font.family).toMatch(/Bricolage/);
 			expect(font.weight).toBe("700");
 			await expect(header).not.toContainText("jotis.me");
-			const toggle = header.getByRole("button", {
-				name: scheme === "dark" ? "Cambiar a claro" : "Cambiar a oscuro",
-			});
-			await expect(toggle).toBeVisible();
+			// Sin elección guardada, el selector marca «Sistema» sea cual sea el tema del sistema.
+			await expect(
+				header.getByRole("button", { name: "Tema: Sistema" }).locator("visible=true"),
+			).toBeVisible();
 			await context.close();
 		});
 
-	test("el botón cambia el tema sin recargar y la elección se mantiene al volver", async ({ browser }) => {
-		const context = await browser.newContext({ colorScheme: "light" });
+	test("página actual en la cabecera: «Vídeos» marcado con un subrayado y sin fondo resaltado", async ({
+		page,
+	}) => {
+		await page.goto("/videos");
+		const nav = page.locator("header").first();
+		const videos = nav.getByRole("link", { name: "Vídeos", exact: true }).locator("visible=true");
+		await expect(videos).toHaveAttribute("aria-current", "page");
+		await expect(
+			nav.getByRole("link", { name: "Inicio", exact: true }).locator("visible=true"),
+		).not.toHaveAttribute("aria-current", "page");
+		const style = await videos.evaluate((el) => {
+			const s = getComputedStyle(el);
+			return { bg: s.backgroundColor, shadow: s.boxShadow };
+		});
+		expect(style.bg).toBe("rgba(0, 0, 0, 0)");
+		// El subrayado es una sombra interior de 2 px abajo.
+		expect(style.shadow).toMatch(/inset/);
+		expect(style.shadow).toMatch(/0px -2px 0px/);
+	});
+
+	test("cabecera a todo el ancho: a 1920 px, la marca al margen izquierdo y el buscador al derecho", async ({
+		browser,
+	}) => {
+		const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
 		const page = await context.newPage();
 		await page.goto("/");
-		await page.evaluate(() => {
-			(window as unknown as { marker: boolean }).marker = true;
-		});
-		await page.getByRole("button", { name: "Cambiar a oscuro" }).click();
-		await expect(page.locator("html")).toHaveClass(/dark-mode/);
-		await expect(page.getByRole("button", { name: "Cambiar a claro" })).toBeVisible();
-		// Misma página: no ha recargado.
-		expect(await page.evaluate(() => (window as unknown as { marker?: boolean }).marker)).toBe(true);
-		await page.reload();
-		await expect(page.locator("html")).toHaveClass(/dark-mode/);
+		const header = page.locator("header").first();
+		const brand = await header
+			.getByRole("link", { name: "Scaena, inicio" })
+			.locator("visible=true")
+			.boundingBox();
+		const search = await header
+			.getByRole("searchbox", { name: "Buscar vídeos" })
+			.locator("visible=true")
+			.boundingBox();
+		const theme = await header
+			.getByRole("button", { name: /^Tema: / })
+			.locator("visible=true")
+			.boundingBox();
+		if (!brand || !search || !theme) throw new Error("falta la marca, el buscador o el selector de tema");
+		expect(brand.x).toBeLessThan(64);
+		expect(search.x + search.width).toBeGreaterThan(1920 - 64);
+		// El selector de tema, a la izquierda del buscador.
+		expect(theme.x + theme.width).toBeLessThanOrEqual(search.x);
 		await context.close();
+	});
+
+	test("en móvil: el tema en la fila de arriba, el buscador en el menú y sin desplazamiento horizontal", async ({
+		browser,
+	}) => {
+		const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+		const page = await context.newPage();
+		for (const path of ["/", "/videos"]) {
+			await page.goto(path);
+			const header = page.locator("header").first();
+			const menu = page.getByRole("button", { name: "Abrir menú" });
+			await expect(menu).toBeVisible();
+			const theme = header.getByRole("button", { name: /^Tema: / }).locator("visible=true");
+			await expect(theme).toHaveCount(1);
+			const [themeBox, menuBox] = await Promise.all([theme.boundingBox(), menu.boundingBox()]);
+			if (!themeBox || !menuBox) throw new Error("falta el selector de tema o el botón de menú");
+			// En la misma fila que el botón de menú, a su izquierda.
+			expect(
+				Math.abs(themeBox.y + themeBox.height / 2 - (menuBox.y + menuBox.height / 2)),
+			).toBeLessThan(2);
+			expect(themeBox.x + themeBox.width).toBeLessThanOrEqual(menuBox.x);
+			await expect(
+				page.getByRole("searchbox", { name: "Buscar vídeos" }).locator("visible=true"),
+			).toHaveCount(0);
+			const overflow = await page.evaluate(
+				() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+			);
+			expect(overflow, path).toBeLessThanOrEqual(0);
+
+			await menu.click();
+			await expect(
+				page.getByRole("searchbox", { name: "Buscar vídeos" }).locator("visible=true"),
+			).toHaveCount(1);
+		}
+		await context.close();
+	});
+
+	test("el pie lleva «El canal», «Esta web» y «Scaena es parte de jotis.me.»", async ({ page }) => {
+		await page.goto("/");
+		const footer = page.locator("footer");
+		await expect(footer.getByText("El canal")).toBeVisible();
+		await expect(footer.getByRole("link", { name: "Twitch" })).toHaveAttribute(
+			"href",
+			"https://twitch.tv/jotis_1",
+		);
+		await expect(footer.getByRole("link", { name: "YouTube" })).toBeVisible();
+		await expect(footer.getByText("Esta web")).toBeVisible();
+		await expect(footer.getByRole("link", { name: "Vídeos" })).toHaveAttribute("href", "/videos");
+		await expect(footer.getByText("Scaena es parte de jotis.me.")).toBeVisible();
 	});
 
 	test("el favicon es el icono sólido en SVG", async ({ page, request }) => {
@@ -86,61 +168,173 @@ test.describe("cabecera y tema", () => {
 });
 
 test.describe("portada", () => {
-	test("sin directo: las cuatro secciones en orden y «Ahora mismo, sin directo»", async ({ page }) => {
+	test("sin directo: las tres secciones en orden, la franja junto al estado y la escena offline", async ({
+		page,
+	}) => {
 		await page.goto("/");
-		const headings = await page.locator("main h1, main h2").allTextContents();
-		const order = [
+		// Los encabezados que lee el lector de pantalla: los de las escenas de muestra van ocultos.
+		const headings = await page
+			.locator("main")
+			.getByRole("heading")
+			.evaluateAll((els) => els.filter((e) => /^H[12]$/.test(e.tagName)).map((e) => e.textContent));
+		expect(headings).toEqual([
 			"Juegos a mi ritmo, sin prisa.",
-			"Ajustes de partida",
-			"Cuándo suelo estar",
-			"Dónde verlo",
-			"Diario de partidas",
-		];
-		expect(headings).toEqual(order);
-		await expect(page.getByText("Ahora mismo, sin directo")).toBeVisible();
-		await expect(page.getByText("Normalmente", { exact: true })).toBeVisible();
-		await expect(page.getByText("17:00 – 20:00")).toBeVisible();
-		// Seis vídeos, con el juego de los directos.
-		await expect(page.locator('a[href^="/videos?v="]')).toHaveCount(6);
-		await expect(page.getByText("Cyberpunk 2077 - #1")).toBeVisible();
-		await expect(page.getByText("1:02:05").first()).toBeVisible();
+			"Cómo va un directo",
+			"Lo último en YouTube",
+		]);
+		const hero = page.locator("#schedule");
+		await expect(hero.getByRole("status").getByText("Sin directo", { exact: true })).toBeVisible();
+		await expect(hero.getByText("Suele haber directo de 17:00 a 20:00.")).toBeVisible();
+		await expect(hero.getByRole("link", { name: "Ver en Twitch" })).toHaveAttribute(
+			"href",
+			"https://twitch.tv/jotis_1",
+		);
+		await expect(hero.getByRole("link", { name: "Ver los vídeos" })).toHaveAttribute("href", "/videos");
+		// El marco enseña la escena offline del perfil.
+		await expect(hero.getByText("Ahora no estoy")).toBeAttached();
+		// Tres vídeos, con su línea.
+		const latest = page.locator('section[aria-labelledby="ultimo"]');
+		await expect(latest.locator('a[href^="/videos?v="]')).toHaveCount(3);
+		await expect(latest.getByText("Directo resubido. Cyberpunk 2077 #1, 1:02:05")).toBeVisible();
 	});
 
-	test("Discord, sin enlace, no aparece en «Dónde verlo» ni en el pie", async ({ page }) => {
+	test("en directo: estado con tiempo y categoría, «Entrar al directo» y la escena de juego", async ({
+		page,
+	}) => {
+		await seed(LIVE);
+		await page.route("**/api/status**", (r) => r.fulfill({ json: LIVE }));
 		await page.goto("/");
-		await expect(page.getByText("Discord", { exact: true })).toHaveCount(0);
+		const hero = page.locator("#schedule");
+		await expect(hero.getByText("Elden Ring").first()).toBeVisible();
+		await expect(hero.getByText("Suele haber directo")).toHaveCount(0);
+		await expect(hero.getByRole("link", { name: "Entrar al directo" })).toBeVisible();
+		await expect(hero.getByText("Ahora no estoy")).toHaveCount(0);
+	});
+
+	test("los pasos: «La charla», el siguiente y volver al principio", async ({ page }) => {
+		await page.goto("/");
+		const journey = page.locator('section[aria-labelledby="como-va"]');
+		await expect(journey.getByRole("heading", { name: "Aviso y cuenta atrás" })).toBeVisible();
+		await journey.getByRole("button", { name: "La charla", exact: true }).click();
+		await expect(journey.getByRole("heading", { name: "Just Chatting, de lo que surja" })).toBeVisible();
+		await expect(journey.locator('[aria-live="polite"]').first()).toContainText(
+			"Just Chatting, de lo que surja",
+		);
+		await journey.getByRole("button", { name: "Siguiente: después" }).click();
+		await expect(journey.getByRole("heading", { name: "El directo se queda en YouTube" })).toBeVisible();
+		await journey.getByRole("button", { name: "Volver al principio" }).click();
+		await expect(journey.getByRole("heading", { name: "Aviso y cuenta atrás" })).toBeVisible();
+	});
+
+	test("Discord, sin enlace, no aparece en el pie ni en el paso «Después»", async ({ page }) => {
+		await page.goto("/");
+		await page.getByRole("button", { name: "Después", exact: true }).click();
+		await expect(page.getByRole("heading", { name: "El directo se queda en YouTube" })).toBeVisible();
+		await expect(page.getByRole("link", { name: "Entrar en Discord" })).toHaveCount(0);
 		await expect(page.getByRole("link", { name: "Discord" })).toHaveCount(0);
-		await expect(page.getByRole("link", { name: "YouTube", exact: true })).toBeVisible();
+		await expect(
+			page.locator("footer").getByRole("link", { name: "YouTube", exact: true }),
+		).toBeVisible();
 	});
 
 	for (const scheme of ["light", "dark"] as const)
-		test(`axe sin errores y como mucho un botón principal (${scheme})`, async ({ browser }) => {
-			const context = await browser.newContext({ colorScheme: scheme });
-			const page = await context.newPage();
-			await page.goto("/");
-			await expect(page.getByText("Diario de partidas")).toBeVisible();
-			const { violations } = await new AxeBuilder({ page }).analyze();
-			expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
-			expect(await primaries(page).count()).toBeLessThanOrEqual(1);
-			await context.close();
-		});
+		for (const live of [false, true])
+			test(`axe sin errores y como mucho un botón principal (${scheme}${live ? ", en directo" : ""})`, async ({
+				browser,
+			}) => {
+				if (live) await seed(LIVE);
+				const context = await browser.newContext({ colorScheme: scheme });
+				const page = await context.newPage();
+				if (live) await page.route("**/api/status**", (r) => r.fulfill({ json: LIVE }));
+				await page.goto("/");
+				await expect(page.getByText("Lo último en YouTube")).toBeVisible();
+				// Los botones de `ProgressSteps` llevan el título como nombre y la línea de apoyo como descripción
+				// (`aria-describedby`); axe compara el nombre con todo el texto visible y los marca. Se revisan
+				// aparte, con todas las reglas menos esa.
+				const steps = 'ol[aria-label="Cómo va un directo"] button';
+				const page1 = await new AxeBuilder({ page }).exclude(steps).analyze();
+				const page2 = await new AxeBuilder({ page })
+					.include(steps)
+					.disableRules(["label-content-name-mismatch"])
+					.analyze();
+				const violations = [...page1.violations, ...page2.violations];
+				expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual(
+					[],
+				);
+				expect(await primaries(page).count()).toBeLessThanOrEqual(1);
+				await context.close();
+			});
 
-	test("el foco no se para en «Ajustes de partida» y recorre la página en orden", async ({ page }) => {
+	test("el foco no entra en las escenas de muestra y recorre las secciones en orden", async ({ page }) => {
 		await page.goto("/");
-		const stops: { inside: boolean; top: number }[] = [];
-		for (let i = 0; i < 25; i++) {
+		const ZONES = [
+			"header",
+			"#schedule",
+			'section[aria-labelledby="como-va"]',
+			'section[aria-labelledby="ultimo"]',
+			"footer",
+		];
+		const zones: number[] = [];
+		for (let i = 0; i < 60; i++) {
 			await page.keyboard.press("Tab");
-			stops.push(
-				await page.evaluate(() => {
-					const el = document.activeElement as HTMLElement;
-					return {
-						inside: Boolean(el.closest('[aria-labelledby="play-settings"]')),
-						top: el.getBoundingClientRect().top + window.scrollY,
-					};
-				}),
-			);
+			const stop = await page.evaluate((zs) => {
+				const el = document.activeElement as HTMLElement;
+				return {
+					inScene: Boolean(el.closest("[inert], [aria-hidden='true']")),
+					zone: zs.findIndex((z) => el.closest(z)),
+				};
+			}, ZONES);
+			expect(stop.inScene).toBe(false);
+			// Al acabar el pie, el foco vuelve a la barra del navegador: ahí se para.
+			if (zones.length && stop.zone < zones[zones.length - 1]) break;
+			if (stop.zone >= 0) zones.push(stop.zone);
 		}
-		expect(stops.some((s) => s.inside)).toBe(false);
+		// Cabecera, qué es, los pasos, los vídeos y el pie, en ese orden y sin saltarse ninguno.
+		expect([...new Set(zones)]).toEqual([0, 1, 2, 3, 4]);
+	});
+
+	// design.md, decisión 5: el marco ocupa su media columna, hasta 640 px.
+	const heroFrame = (page: Page) => page.locator('#schedule [class*="flex-[1_1_480px]"] > *').first();
+
+	test("a 1440 px el marco de la primera sección mide al menos 560 px", async ({ browser }) => {
+		const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+		const page = await context.newPage();
+		for (const status of [{ live: false }, LIVE]) {
+			await seed(status);
+			await page.goto("/");
+			const box = await heroFrame(page).boundingBox();
+			expect(box?.width, JSON.stringify(status)).toBeGreaterThanOrEqual(560);
+			expect(box?.width).toBeLessThanOrEqual(640);
+		}
+		await context.close();
+	});
+
+	test("a 390 px el marco ocupa el ancho y no hay desplazamiento horizontal", async ({ browser }) => {
+		const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+		const page = await context.newPage();
+		await page.goto("/");
+		const box = await heroFrame(page).boundingBox();
+		// Todo el ancho menos los 16 px de margen a cada lado.
+		expect(box?.width).toBeGreaterThanOrEqual(390 - 2 * 16 - 1);
+		const overflow = await page.evaluate(
+			() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+		);
+		expect(overflow).toBeLessThanOrEqual(0);
+		await context.close();
+	});
+
+	test("en móvil la escena de los pasos cabe sin desplazamiento horizontal", async ({ browser }) => {
+		const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+		const page = await context.newPage();
+		await page.goto("/");
+		for (const step of ["Antes", "La partida", "La charla", "Después"]) {
+			await page.getByRole("button", { name: step, exact: true }).click();
+			const overflow = await page.evaluate(
+				() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+			);
+			expect(overflow, step).toBeLessThanOrEqual(0);
+		}
+		await context.close();
 	});
 });
 
@@ -163,22 +357,19 @@ test.describe("aviso de directo", () => {
 		await page.clock.fastForward(30_000);
 		await expect(banner).toBeVisible();
 		await expect(banner).toContainText("En directo: Elden Ring sin prisa");
-		await expect(banner).toContainText("1.284 espectadores");
+		await expect(banner).toContainText(/Elden Ring, 2:1\d:\d\d en emisión/);
+		await expect(banner).not.toContainText("espectadores");
 		await expect(banner.getByRole("link", { name: "Ver en Twitch" })).toHaveAttribute(
 			"href",
 			"https://twitch.tv/jotis_1",
 		);
-		await expect(banner.getByRole("link", { name: "scaena.jotis.me/live" })).toHaveAttribute(
-			"href",
-			"/live",
-		);
-		await expect(page.getByText("En directo ahora", { exact: true }).last()).toBeVisible();
+		await expect(banner.getByRole("link", { name: "scaena.jotis.me/live" })).toHaveCount(0);
 		set({ live: false });
 		await page.clock.fastForward(30_000);
 		await expect(banner).toHaveCount(0);
 	});
 
-	test("cerrado no vuelve en la visita, y «Dónde verlo» sigue en directo", async ({ page }) => {
+	test("cerrado no vuelve en la visita, y la portada sigue en directo", async ({ page }) => {
 		await seed(LIVE);
 		await page.route("**/api/status**", (r) => r.fulfill({ json: LIVE }));
 		await page.goto("/");
@@ -187,9 +378,9 @@ test.describe("aviso de directo", () => {
 		await banner.getByRole("button", { name: "Cerrar el aviso" }).click();
 		await expect(banner).toHaveCount(0);
 		await page.reload();
-		await expect(page.getByText("Diario de partidas")).toBeVisible();
+		await expect(page.getByText("Lo último en YouTube")).toBeVisible();
 		await expect(banner).toHaveCount(0);
-		await expect(page.locator("main").getByText("En directo ahora")).toBeVisible();
+		await expect(page.getByRole("link", { name: "Entrar al directo" })).toBeVisible();
 	});
 
 	test("en directo: sin tokens de error y como mucho un botón principal", async ({ page }) => {
@@ -210,6 +401,7 @@ test.describe("/live", () => {
 	test("sin directo lleva al horario de la portada", async ({ page }) => {
 		await page.goto("/live");
 		await expect(page).toHaveURL(/\/#schedule$/);
+		await expect(page.getByText("Suele haber directo de 17:00 a 20:00.")).toBeInViewport();
 	});
 
 	test("en directo redirige a Twitch", async ({ request }) => {

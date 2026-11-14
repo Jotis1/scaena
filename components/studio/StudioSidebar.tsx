@@ -1,15 +1,18 @@
 "use client";
 
-import { AppIcon, Badge, type IconName, SidebarNav } from "@jotis-me/react";
+import { Badge, SidebarNav } from "@jotis-me/react";
+import { Grid01, Image01, Link01 } from "@untitledui/icons";
 import { usePathname, useRouter } from "next/navigation";
+import { ScaenaBrand } from "@/components/web/ScaenaBrand";
 import { authClient } from "@/lib/auth-client";
 
 // Barra lateral del estudio con el `SidebarNav` de Regula (diseño: «Estudio»). Sin selector de canal: el canal
-// sale de la sesión. Va fija y con el alto de la ventana, así que la cuenta y «Salir» se ven siempre.
-export const STUDIO_PAGES: { href: string; label: string; icon: IconName }[] = [
-	{ href: "/studio/overlays", label: "Overlays", icon: "grid-01" },
-	{ href: "/studio/assets", label: "Recursos", icon: "image-01" },
-	{ href: "/studio/connection", label: "Conexión", icon: "link-01" },
+// sale de la sesión. En el escritorio va fija y con el alto de la ventana, así que la cuenta y «Salir» se ven
+// siempre; por debajo de `lg` es una barra arriba con el menú.
+export const STUDIO_PAGES = [
+	{ href: "/studio/overlays", label: "Overlays", icon: <Grid01 size={24} /> },
+	{ href: "/studio/assets", label: "Recursos", icon: <Image01 size={24} /> },
+	{ href: "/studio/connection", label: "Conexión", icon: <Link01 size={24} /> },
 ];
 
 export function StudioSidebar({ name }: { name: string }) {
@@ -21,29 +24,23 @@ export function StudioSidebar({ name }: { name: string }) {
 		router.refresh();
 	};
 	return (
-		<div className="sticky top-0 h-screen max-h-screen flex-none overflow-y-auto">
+		<div className="flex-none lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:overflow-y-auto">
 			<SidebarNav
 				brand={
-					<>
-						<AppIcon letters="Sc" hue="lime" size={32} label="Scaena" />
-						<span className="text-xl">Scaena</span>
+					<span className="flex items-center gap-2.5">
+						<ScaenaBrand size={32} />
 						<Badge color="gray" type="badge" size="sm">
 							Estudio
 						</Badge>
-					</>
+					</span>
 				}
 				items={STUDIO_PAGES.map((p) => ({ ...p, active: path === p.href }))}
 				user={{ initials: name.charAt(0).toUpperCase(), name, supporting: "Cuenta de Twitch" }}
 				onLogout={signOut}
+				responsive
 				labels={{ nav: "Estudio", logout: "Salir" }}
-				className="min-h-full"
+				className="lg:min-h-full"
 			/>
 		</div>
 	);
-}
-
-/** Migas de la barra superior: «Estudio › Overlays». */
-export function studioCrumbs(path: string): { label: string; href?: string }[] {
-	const page = STUDIO_PAGES.find((p) => p.href === path);
-	return [{ label: "Estudio", href: "/studio" }, ...(page ? [{ label: page.label }] : [])];
 }

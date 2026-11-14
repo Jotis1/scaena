@@ -8,14 +8,14 @@ describe("alertas de prueba", () => {
 		expect(TEST_ALERTS.map((t) => t.label)).toEqual([
 			"Follow",
 			"Sub nivel 1",
-			"Renovación - 14 meses",
+			"Renovación de 14 meses",
 			"5 subs regaladas",
-			"Raid - 1.284",
+			"Raid de 1.284",
 			"500 bits",
 		]);
 	});
 
-	it("«Raid - 1.284» mete en el stream un raid de 1.284 marcado como prueba", async () => {
+	it("«Raid de 1.284» mete en el stream un raid de 1.284 marcado como prueba", async () => {
 		const store = memoryStore();
 		await sendTestAlert(store, "1337", "raid");
 		const [e] = await store.xrange(keys.channel("1337", "events"));

@@ -2,6 +2,7 @@
 // parámetros que no son el valor por defecto, para que la URL se lea. Las que reciben eventos llevan `token`; la
 // meta, además, `since` (la hora a la que se copia).
 import type { GoalType } from "../alerts/goal";
+import { type CanvasId, DEFAULT_CANVAS } from "../overlay/canvas";
 
 export type SourceKind =
 	| "chat"
@@ -35,6 +36,8 @@ export interface SourceOptions {
 	camera?: boolean;
 	events?: boolean;
 	goalPiece?: boolean;
+	/** Lienzo de las escenas; en las piezas no cuenta. */
+	canvas?: CanvasId;
 }
 
 /** Fuentes que reciben eventos: sin token no muestran nada de eso (specs/obs-overlays, «Acceso con token»). */
@@ -99,6 +102,9 @@ export function sourceUrl(kind: SourceKind, o: SourceOptions, c: UrlContext): st
 			if (o.next) q.set("next", o.next);
 			break;
 	}
+	// Solo las escenas cambian de lienzo, y solo se escribe si no es el de por defecto (design.md de
+	// refine-site-and-ultrawide-scenes, decisión 7).
+	if (kind.startsWith("scene/") && o.canvas && o.canvas !== DEFAULT_CANVAS) q.set("canvas", o.canvas);
 	if (WITH_TOKEN.includes(kind)) q.set("token", c.token);
 	const s = q.toString();
 	return `${c.origin}/overlay/${c.channel}/${kind}${s ? `?${s}` : ""}`;

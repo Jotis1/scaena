@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 // Posiciones de las escenas montadas (diseño: «Escena de juego» y «Escena de Just Chatting»). Solo colocan: las
 // piezas llegan hechas, en vivo en el overlay (GameScene, ChattingScene) o con datos de ejemplo en la vista previa
 // del estudio. Así las dos cosas no se separan nunca. Una pieza `null` no deja hueco.
+//
+// El lienzo es de `width` × 1080 (1920 por defecto; 2580 para 3440×1440, que se escala a 4/3 por fuera con
+// `SceneCanvas`). Las piezas van pegadas a su borde, a la izquierda o a la derecha, y el ancho que sobra queda en el
+// centro (specs/obs-overlays, «Escenas montadas»; design.md, decisión 7).
 
 export interface SceneSlots {
 	status: ReactNode;
@@ -12,16 +16,18 @@ export interface SceneSlots {
 	chat?: ReactNode;
 	events?: ReactNode;
 	camera?: ReactNode;
+	/** Ancho del lienzo lógico. */
+	width?: number;
 }
 
-/** Juego: piezas en las esquinas y el centro (480–1440 px) libre; la alerta pasa por arriba en el centro. */
-export function GameLayout(s: SceneSlots) {
+/** Juego: piezas en las esquinas y el centro (480–1440 px en 1920) libre; la alerta pasa por arriba en el centro. */
+export function GameLayout({ width = 1920, ...s }: SceneSlots) {
 	return (
-		<div className="relative h-[1080px] w-[1920px] overflow-hidden" data-scene="game">
+		<div className="relative h-[1080px] overflow-hidden" style={{ width }} data-scene="game">
 			<div className="absolute top-10 left-12" data-piece="status">
 				{s.status}
 			</div>
-			<div className="absolute top-10 left-[720px] w-[480px]" data-piece="alerts">
+			<div className="absolute top-10 left-1/2 w-[480px] -translate-x-1/2" data-piece="alerts">
 				{s.alerts}
 			</div>
 			{s.goal ? (
@@ -52,10 +58,10 @@ export function GameLayout(s: SceneSlots) {
 export const CAMERA_HOLE = { x: 64, y: 112, width: 1216, height: 684, radius: 16 };
 
 /** Máscara del fondo: opaco salvo el hueco de la cámara, que pone OBS debajo. Solo opacidad, sin color. */
-function backgroundMask(): string {
+function backgroundMask(width: number): string {
 	const { x, y, width: w, height: h, radius: r } = CAMERA_HOLE;
 	const hole = `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
-	const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080'><path fill-rule='evenodd' d='M0 0H1920V1080H0Z${hole}'/></svg>`;
+	const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='1080'><path fill-rule='evenodd' d='M0 0H${width}V1080H0Z${hole}'/></svg>`;
 	return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
@@ -64,10 +70,10 @@ function backgroundMask(): string {
  * cámara, a plena opacidad. La alerta entra encima del chat sin taparlo. El fondo es una pieza más, con el hueco
  * de la cámara.
  */
-export function ChattingLayout(s: SceneSlots) {
-	const mask = backgroundMask();
+export function ChattingLayout({ width = 1920, ...s }: SceneSlots) {
+	const mask = backgroundMask(width);
 	return (
-		<div className="relative h-[1080px] w-[1920px] overflow-hidden" data-scene="chatting">
+		<div className="relative h-[1080px] overflow-hidden" style={{ width }} data-scene="chatting">
 			<div
 				aria-hidden="true"
 				data-piece="background"
@@ -88,11 +94,12 @@ export function ChattingLayout(s: SceneSlots) {
 				{s.goal ? <div data-piece="goal">{s.goal}</div> : null}
 				{s.events ? <div data-piece="events">{s.events}</div> : null}
 			</div>
-			<div className="absolute top-[112px] left-[1352px] w-[480px]" data-piece="alerts">
+			{/* Pegadas a la derecha: en 1920, la alerta en x = 1352 y el chat (528 px) en x = 1328, como en el diseño. */}
+			<div className="absolute top-[112px] right-[88px] w-[480px]" data-piece="alerts">
 				{s.alerts}
 			</div>
 			{s.chat ? (
-				<div className="absolute top-[280px] left-[1328px]" data-piece="chat">
+				<div className="absolute top-[280px] right-16" data-piece="chat">
 					{s.chat}
 				</div>
 			) : null}

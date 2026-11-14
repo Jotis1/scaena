@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
+import { PROFILE_ICONS } from "../icons";
 import { getProfile, PROFILE_PATH, ProfileError, parseProfile } from ".";
 
 const REAL_YAML = readFileSync(PROFILE_PATH, "utf8");
@@ -61,9 +62,39 @@ describe("perfil del canal", () => {
 		]);
 	});
 
-	it("rechaza un icono que no está en Regula", () => {
-		expect(problems(withChange((p) => (p.panels[0].icon = "cohete")))).toEqual([
-			"panels[0] («de-que-va»).icon: no es un icono de Regula",
+	it("rechaza un icono fuera de la lista del perfil", () => {
+		expect(problems(withChange((p) => (p.panels[0].icon = "no-existe" as never)))).toEqual([
+			"panels[0] («de-que-va»).icon: no es un icono del perfil; se pueden usar clock, info-circle, link-01, play, shield-tick",
+		]);
+	});
+
+	it("traduce cada icono del perfil a un componente", () => {
+		for (const panel of parseProfile(REAL_YAML).panels) expect(PROFILE_ICONS[panel.icon]).toBeDefined();
+	});
+
+	it("exige los cuatro pasos de «Cómo va un directo» y nombra el que falta", () => {
+		expect(problems(withChange((p) => delete p.journey.chatting))).toEqual([
+			"journey.chatting: Invalid input: expected object, received undefined",
+		]);
+	});
+
+	it("rechaza emojis en un paso de la portada y señala ese paso", () => {
+		expect(problems(withChange((p) => (p.journey.after.text += " 🎮")))).toEqual([
+			"journey.after.text: sin emojis: la guía de Regula no los admite",
+		]);
+	});
+
+	it("rechaza emojis en la frase de la web y en el pie", () => {
+		expect(
+			problems(
+				withChange((p) => {
+					p.site.intro += " 👋";
+					p.site.footer += " ✨";
+				}),
+			),
+		).toEqual([
+			"site.intro: sin emojis: la guía de Regula no los admite",
+			"site.footer: sin emojis: la guía de Regula no los admite",
 		]);
 	});
 

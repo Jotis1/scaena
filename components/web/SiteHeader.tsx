@@ -1,27 +1,44 @@
-import { AppIcon } from "@jotis-me/react";
-import Link from "next/link";
-import { SiteNav } from "./SiteNav";
-import { ThemeToggle } from "./ThemeToggle";
+"use client";
+
+import { HeaderNav } from "@jotis-me/react";
+import { usePathname } from "next/navigation";
+import { ScaenaBrand } from "./ScaenaBrand";
+import { ThemeMenu } from "./ThemeMenu";
+import { VideoSearch } from "./VideoSearch";
 
 /**
- * Cabecera de la web (decidido): icono «Sc» y «Scaena» en Bricolage bold `text-primary`, el estilo que la guía da
- * a «jotis.me», sin «jotis.me». Un único botón de tema.
+ * Cabecera de la web con el `HeaderNav` de Regula: subrayada y a todo el ancho, con la marca, «Inicio» y «Vídeos» (la
+ * página actual subrayada) y, a la derecha, el selector de tema y el buscador (specs/channel-site, «Diseño de la
+ * suite»; design.md, decisión 1). Por debajo de 1024 px de cabecera, la navegación va en el menú: el selector de tema
+ * sigue en la fila de arriba (`mobileActions`) y el buscador pasa al panel del menú (`search`).
  */
 export function SiteHeader() {
+	const path = usePathname();
 	return (
-		<header className="border-b border-secondary bg-primary">
-			<div className="mx-auto flex max-w-320 items-center gap-4 px-4 py-3 md:px-8">
-				<Link
+		<HeaderNav
+			type="underline"
+			fullWidth
+			mobileActions
+			brand={
+				<a
 					href="/"
-					className="flex items-center gap-2.5 rounded-md text-primary focus-visible:shadow-focus-ring focus-visible:outline-none"
+					aria-label="Scaena, inicio"
+					className="flex min-h-11 items-center rounded-md focus-visible:shadow-focus-ring focus-visible:outline-none"
 				>
-					<AppIcon letters="Sc" hue="lime" size={32} label="Scaena" />
-					<span className="font-display text-xl font-bold text-primary">Scaena</span>
-				</Link>
-				<SiteNav />
-				<span aria-hidden="true" className="flex-auto" />
-				<ThemeToggle />
-			</div>
-		</header>
+					<ScaenaBrand size={32} />
+				</a>
+			}
+			items={[
+				{ label: "Inicio", href: "/", current: path === "/" },
+				{ label: "Vídeos", href: "/videos", current: path.startsWith("/videos") },
+			]}
+			search={<VideoSearch />}
+			actions={
+				<>
+					<ThemeMenu />
+					<VideoSearch className="hidden w-70 @5xl:block" />
+				</>
+			}
+		/>
 	);
 }

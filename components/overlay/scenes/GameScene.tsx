@@ -13,11 +13,12 @@ import type { SceneOptions } from "./params";
  * Escena de juego en vivo (design.md, decisión 15). Cada pieza es la misma del overlay suelto y todas comparten
  * una conexión SSE. El juego y la cámara los pone OBS debajo.
  */
-export function GameScene({ profile, o }: { profile: Profile; o: SceneOptions }) {
+export function GameScene({ profile, o, width }: { profile: Profile; o: SceneOptions; width?: number }) {
 	const channel = profile.twitch.login;
 	return (
 		<ChannelEventsProvider channel={channel} token={o.token} since={o.since}>
 			<GameLayout
+				width={width}
 				status={<LiveStatusPill channel={channel} viewers={false} />}
 				alerts={<LiveAlerts message durationMs={7000} />}
 				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} /> : null}

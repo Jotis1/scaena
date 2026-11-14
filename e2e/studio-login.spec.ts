@@ -19,8 +19,22 @@ test("una cuenta sin acceso ve el aviso y la opción de probar con otra", async 
 	await expect(page.getByRole("button", { name: "Entrar con Twitch" })).toHaveCount(0);
 });
 
+test("el aviso dice con qué cuenta se ha entrado, dentro de la tarjeta", async ({ page }) => {
+	await page.goto("/studio/login?error=account_not_allowed&account=otra_cuenta&id=42");
+	const card = page
+		.locator("main")
+		.getByRole("heading", { name: "Entra en el Estudio" })
+		.locator("xpath=../../..");
+	await expect(
+		card.getByText(
+			"Has entrado como otra_cuenta (id 42), que no está entre las que pueden usar el Estudio.",
+		),
+	).toBeVisible();
+	await expect(page.locator("a.bg-brand-solid, button.bg-brand-solid")).toHaveCount(0);
+});
+
 test("la entrada tiene el nombre de la app y el botón de tema", async ({ page }) => {
 	await page.goto("/studio/login");
-	await expect(page.getByRole("button", { name: /Cambiar a (oscuro|claro)/ })).toBeVisible();
+	await expect(page.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ })).toBeVisible();
 	await expect(page.getByText("Scaena", { exact: true })).toBeVisible();
 });

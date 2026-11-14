@@ -9,17 +9,15 @@ export interface TestAlert {
 	type: AlertType;
 	/** Texto del botón (diseño). */
 	label: string;
-	icon: string;
 	event: Pick<AlertEvent, "user" | "amount" | "months" | "tier" | "message">;
 }
 
 export const TEST_ALERTS: TestAlert[] = [
-	{ type: "follow", label: "Follow", icon: "user-plus-01", event: { user: "Espectador de prueba" } },
-	{ type: "sub", label: "Sub nivel 1", icon: "star-01", event: { user: "Espectador de prueba", tier: 1 } },
+	{ type: "follow", label: "Follow", event: { user: "Espectador de prueba" } },
+	{ type: "sub", label: "Sub nivel 1", event: { user: "Espectador de prueba", tier: 1 } },
 	{
 		type: "resub",
-		label: "Renovación - 14 meses",
-		icon: "refresh-cw-01",
+		label: "Renovación de 14 meses",
 		event: {
 			user: "Espectador de prueba",
 			months: 14,
@@ -30,16 +28,14 @@ export const TEST_ALERTS: TestAlert[] = [
 	{
 		type: "gift",
 		label: "5 subs regaladas",
-		icon: "stars-02",
 		event: { user: "Espectador de prueba", amount: 5, tier: 1 },
 	},
 	{
 		type: "raid",
-		label: "Raid - 1.284",
-		icon: "users-01",
+		label: "Raid de 1.284",
 		event: { user: "Canal de prueba", amount: 1284 },
 	},
-	{ type: "bits", label: "500 bits", icon: "zap", event: { user: "Espectador de prueba", amount: 500 } },
+	{ type: "bits", label: "500 bits", event: { user: "Espectador de prueba", amount: 500 } },
 ];
 
 export async function sendTestAlert(store: Store, channelId: string, type: string, now = Date.now()) {

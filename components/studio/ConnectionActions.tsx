@@ -1,8 +1,10 @@
 "use client";
 
 import { Alert, Button, type ButtonHierarchy } from "@jotis-me/react";
+import { LogOut01, RefreshCw01 } from "@untitledui/icons";
 import { type ReactNode, useState, useTransition } from "react";
 import { SocialLogo } from "@/components/brand/SocialLogo";
+import type { IconProp } from "@/lib/icons";
 
 type Action = () => Promise<{ error?: string }>;
 
@@ -20,7 +22,7 @@ function ActionButton({
 	hierarchy?: ButtonHierarchy;
 	size?: "sm" | "md" | "lg";
 	destructive?: boolean;
-	iconLeading?: ReactNode;
+	iconLeading?: IconProp;
 }) {
 	const [pending, start] = useTransition();
 	const [error, setError] = useState<string>();
@@ -64,7 +66,7 @@ export function ConnectButton({ action }: { action: Action }) {
 
 export function DisconnectButton({ action }: { action: Action }) {
 	return (
-		<ActionButton action={action} destructive iconLeading="log-out-01">
+		<ActionButton action={action} destructive iconLeading={LogOut01}>
 			Desconectar
 		</ActionButton>
 	);
@@ -76,7 +78,7 @@ export function ReactivateButton({ action, primary }: { action: Action; primary:
 			action={action}
 			hierarchy={primary ? "primary" : "secondary"}
 			size="sm"
-			iconLeading="refresh-cw-01"
+			iconLeading={RefreshCw01}
 		>
 			Reactivar
 		</ActionButton>

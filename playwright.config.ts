@@ -27,7 +27,10 @@ const ENV_E2E = {
 export default defineConfig({
 	testDir: "e2e",
 	globalSetup: "./e2e/global-setup.ts",
-	fullyParallel: true,
+	// En serie: todos los archivos comparten el Redis falso y cada uno lo vacía (`FLUSHALL`) al sembrar sus datos, así
+	// que en paralelo se borran los datos unos a otros.
+	fullyParallel: false,
+	workers: 1,
 	retries: process.env.CI ? 2 : 0,
 	use: { baseURL: `http://localhost:${PORT}`, trace: "on-first-retry" },
 	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

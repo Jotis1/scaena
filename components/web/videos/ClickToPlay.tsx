@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@jotis-me/react";
+import { Play } from "@untitledui/icons";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
@@ -47,7 +47,7 @@ export function ClickToPlay({ id, title, thumbnail }: { id: string; title: strin
 				/>
 			) : null}
 			<span className="dark-mode absolute top-1/2 left-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary/85 text-primary shadow-lg transition-colors duration-100 group-hover:bg-primary">
-				<Icon name="play" size={28} />
+				<Play size={28} aria-hidden="true" />
 			</span>
 		</button>
 	);

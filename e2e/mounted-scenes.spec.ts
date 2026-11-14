@@ -136,3 +136,69 @@ test.describe("escena de Just Chatting", () => {
 		);
 	});
 });
+
+// specs/obs-overlays, «Escenas montadas» en 3440×1440: lienzo lógico de 2580×1080 a 4/3. Las piezas, pegadas a los
+// mismos bordes que en 1920, y lo que sobra, al centro.
+test.describe("ultrapanorámico", () => {
+	test.use({ viewport: { width: 3440, height: 1440 } });
+	const K = 4 / 3;
+
+	const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+		a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+	test("centro libre en ultrapanorámico: nada fijo entre 640 y 2800 px y la alerta centrada", async ({
+		page,
+	}) => {
+		await open(page, "/overlay/jotis_1/scene/game?token=bueno&start=284&goal=300&canvas=3440x1440");
+		await expect(page.getByRole("progressbar")).toBeVisible();
+		expect(
+			await page.evaluate(() => [
+				document.documentElement.scrollWidth,
+				document.documentElement.scrollHeight,
+			]),
+		).toEqual([3440, 1440]);
+		for (const name of ["status", "goal", "chat", "events", "camera"]) {
+			const b = await box(page, name);
+			expect(b.x < 2800 && b.x + b.width > 640, name).toBe(false);
+		}
+		// Mismos bordes que en 1920, a 4/3.
+		expect((await box(page, "status")).x).toBeCloseTo(48 * K, 0);
+		const cam = await box(page, "camera");
+		expect(cam.x + cam.width).toBeCloseTo(3440 - 48 * K, 0);
+		expect(cam.y + cam.height).toBeCloseTo(1440 - 48 * K, 0);
+		const alerts = await box(page, "alerts");
+		expect(alerts.width).toBeCloseTo(480 * K, 0);
+		expect(alerts.x + alerts.width / 2).toBeCloseTo(1720, 0);
+		if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/game.png` });
+	});
+
+	test("Just Chatting en ultrapanorámico: cámara arriba a la izquierda con su hueco, chat y alerta a la derecha", async ({
+		page,
+	}) => {
+		await open(page, "/overlay/jotis_1/scene/chatting?token=bueno&start=284&goal=300&canvas=3440x1440");
+		await expect(page.getByRole("progressbar")).toBeVisible();
+		const alertCard = piece(page, "alerts").getByRole("status");
+		await expect(alertCard).toBeVisible();
+		const cam = await box(page, "camera");
+		expect([cam.x, cam.y, cam.width, cam.height].map(Math.round)).toEqual(
+			[64, 112, 1216, 684].map((n) => Math.round(n * K)),
+		);
+		// El hueco del fondo va donde la cámara, con la máscara al ancho del lienzo lógico.
+		const mask = await piece(page, "background").evaluate((el) => getComputedStyle(el).maskImage);
+		expect(decodeURIComponent(mask)).toContain("width='2580'");
+		const chat = await box(page, "chat");
+		expect(chat.x + chat.width).toBeCloseTo(3440 - 64 * K, 0);
+		expect(chat.width).toBeCloseTo(528 * K, 0);
+		const a = await alertCard.boundingBox();
+		if (!a) throw new Error("no se ve la alerta");
+		expect((await box(page, "alerts")).x + 480 * K).toBeCloseTo(3440 - 88 * K, 0);
+		// Nada se solapa: la alerta encima del chat, y ni el chat ni la alerta tocan la cámara, la meta o los eventos.
+		expect(a.y + a.height).toBeLessThanOrEqual(chat.y);
+		for (const name of ["camera", "goal", "events"]) {
+			const b = await box(page, name);
+			expect(overlap(b, chat), `${name} y chat`).toBe(false);
+			expect(overlap(b, a), `${name} y alerta`).toBe(false);
+		}
+		if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/chatting.png` });
+	});
+});

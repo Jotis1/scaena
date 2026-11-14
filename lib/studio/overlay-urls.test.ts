@@ -57,6 +57,33 @@ describe("URL de las fuentes", () => {
 		);
 	});
 
+	it("lienzo: `canvas=3440x1440` solo en las escenas y solo si se elige", () => {
+		const scenes = [
+			"scene/game",
+			"scene/chatting",
+			"scene/starting",
+			"scene/brb",
+			"scene/ending",
+			"scene/offline",
+		] as const;
+		for (const kind of scenes) {
+			expect(
+				new URL(sourceUrl(kind, { canvas: "3440x1440" }, C)).searchParams.get("canvas"),
+				kind,
+			).toBe("3440x1440");
+			expect(sourceUrl(kind, { canvas: "1920x1080" }, C), kind).not.toContain("canvas");
+			expect(sourceUrl(kind, {}, C), kind).not.toContain("canvas");
+		}
+		for (const kind of ["chat", "alerts", "events", "goal", "status", "camera"] as const) {
+			expect(sourceUrl(kind, { canvas: "3440x1440" }, C), kind).not.toContain("canvas");
+		}
+		expect(sourceUrl("scene/offline", { canvas: "3440x1440" }, C)).toBe(
+			"https://scaena.jotis.me/overlay/jotis_1/scene/offline?canvas=3440x1440",
+		);
+		// Antes del token, que va siempre al final.
+		expect(sourceUrl("scene/game", { canvas: "3440x1440" }, C)).toMatch(/canvas=3440x1440&token=/);
+	});
+
 	it("el token se enseña tapado", () => {
 		expect(maskToken(sourceUrl("alerts", {}, C), C.token)).toBe(
 			"https://scaena.jotis.me/overlay/jotis_1/alerts?token=••••a91f",

@@ -7,6 +7,7 @@ import {
 	sceneFooter,
 	shortDaysText,
 	shortSlotText,
+	usuallyLiveText,
 	usuallyText,
 } from "./schedule";
 
@@ -18,6 +19,7 @@ describe("horario habitual", () => {
 		expect(usuallyText(s)).toBe("Normalmente 17:00 – 20:00");
 		expect(shortSlotText(s)).toBe("17-20 h");
 		expect(sceneFooter(s)).toBe("Normalmente, de 17:00 a 20:00");
+		expect(usuallyLiveText(s)).toBe("Suele haber directo de 17:00 a 20:00.");
 		expect(daysText(s)).toBe("Sin fijar");
 	});
 

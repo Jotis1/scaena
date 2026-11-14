@@ -58,10 +58,31 @@ export interface VideoPage {
 	total: number;
 }
 
-/** Clasifica, filtra por tipo y, después, pagina de doce en doce. Una página fuera de rango da la última. */
-export function videoPage(videos: Video[], filter: VideoFilter, page: number): VideoPage {
+/** Minúsculas, sin tildes y sin espacios a los lados: «Ciudad» y «ciudad», «Pokémon» y «pokemon» son lo mismo. */
+export function normalizeQuery(text: string): string {
+	return text
+		.normalize("NFD")
+		.replace(/\p{Diacritic}/gu, "")
+		.toLowerCase()
+		.trim();
+}
+
+/** ¿El texto buscado está en el título o, en los directos, en el juego? (design.md, decisión 4). */
+function matches(v: ClassifiedVideo, query: string): boolean {
+	const fields = v.parsed.kind === "live" ? [v.parsed.title, v.parsed.game] : [v.parsed.title];
+	return fields.some((f) => normalizeQuery(f).includes(query));
+}
+
+/**
+ * Clasifica, filtra por tipo y por el texto buscado y, después, pagina de doce en doce. Una página fuera de rango da
+ * la última.
+ */
+export function videoPage(videos: Video[], filter: VideoFilter, page: number, query = ""): VideoPage {
+	const q = normalizeQuery(query);
 	const classified = videos.map((v) => ({ ...v, parsed: parseTitle(v.title) }));
-	const filtered = filter === "all" ? classified : classified.filter((v) => v.parsed.kind === filter);
+	const filtered = classified.filter(
+		(v) => (filter === "all" || v.parsed.kind === filter) && (!q || matches(v, q)),
+	);
 	const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 	const p = Math.min(Math.max(1, Math.floor(page) || 1), pages);
 	return {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gameLine, parseTitle } from "./title";
+import { cardLine, gameLine, parseTitle } from "./title";
 
 describe("tipo y juego desde el título", () => {
 	it("«La ciudad que nunca duerme - Cyberpunk 2077 #1» es un directo resubido", () => {
@@ -10,7 +10,7 @@ describe("tipo y juego desde el título", () => {
 			game: "Cyberpunk 2077",
 			number: 1,
 		});
-		expect(gameLine(p)).toBe("Cyberpunk 2077 - #1");
+		expect(gameLine(p)).toBe("Cyberpunk 2077 #1");
 	});
 
 	it("con guion dentro del título, el último « - » separa el juego", () => {
@@ -32,5 +32,16 @@ describe("tipo y juego desde el título", () => {
 	it("casi el formato: también editados", () => {
 		for (const t of ["Cyberpunk 2077 #1", "Algo - Cyberpunk 2077 #uno"])
 			expect(parseTitle(t)).toEqual({ kind: "edited", title: t });
+	});
+});
+
+describe("línea de la tarjeta de vídeo", () => {
+	it("un directo de 3 h 12 min 40 s lleva tipo, juego, número y duración", () => {
+		const p = parseTitle("La ciudad que nunca duerme - Cyberpunk 2077 #1");
+		expect(cardLine(p, 3 * 3600 + 12 * 60 + 40)).toBe("Directo resubido. Cyberpunk 2077 #1, 3:12:40");
+	});
+
+	it("un editado de 10 min 4 s lleva tipo y duración", () => {
+		expect(cardLine(parseTitle("Cinco horas en Night City en diez minutos"), 604)).toBe("Editado, 10:04");
 	});
 });

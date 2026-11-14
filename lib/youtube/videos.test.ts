@@ -195,3 +195,60 @@ describe("paginación", () => {
 		expect(videoPage([], "all", 1)).toMatchObject({ items: [], page: 1, pages: 1, total: 0 });
 	});
 });
+
+// specs/channel-site, «Buscador de vídeos» y «Buscar dentro de un filtro».
+describe("búsqueda", () => {
+	const titles = [
+		"La Ciudad que Nunca Duerme - Cyberpunk 2077 #1",
+		"Resumen de la semana",
+		"El jefe final - Elden Ring #3",
+		"Cyberpunk: lo mejor del mes",
+	];
+	const videos = many(titles.length, (i) => titles[i - 1] ?? "");
+
+	it("«cyberpunk» encuentra el directo por su juego y el editado por su título", () => {
+		const p = videoPage(videos, "all", 1, "cyberpunk");
+		expect(p.items.map((v) => v.id)).toEqual(["v1", "v4"]);
+		expect(p.total).toBe(2);
+	});
+
+	it("sin mayúsculas ni tildes: «ciudad que nunca duerme» encuentra «La Ciudad que Nunca Duerme»", () => {
+		expect(videoPage(videos, "all", 1, "ciudad que nunca duerme").items.map((v) => v.id)).toEqual(["v1"]);
+		expect(videoPage(videos, "all", 1, "  CIÚDAD ").items.map((v) => v.id)).toEqual(["v1"]);
+		expect(
+			videoPage(
+				many(1, () => "Pokemon Esmeralda"),
+				"all",
+				1,
+				"pokémon",
+			).total,
+		).toBe(1);
+	});
+
+	it("el número del directo no cuenta como título: «#3» no encuentra nada", () => {
+		expect(videoPage(videos, "all", 1, "#3").total).toBe(0);
+	});
+
+	it("la paginación cuenta solo los resultados combinados con «Directos»", () => {
+		// Impares: directos de Cyberpunk; pares: editados de Cyberpunk; y cada 5, un directo de otro juego.
+		const mixed = many(40, (i) =>
+			i % 5 === 0
+				? `Otra ${i} - Elden Ring #${i}`
+				: i % 2
+					? `Parte ${i} - Cyberpunk 2077 #${i}`
+					: `Cyberpunk ${i}`,
+		);
+		const live = videoPage(mixed, "live", 2, "cyberpunk");
+		expect(live.total).toBe(16);
+		expect(live.pages).toBe(2);
+		expect(live.items).toHaveLength(4);
+		expect(live.items.every((v) => v.parsed.kind === "live" && v.parsed.game === "Cyberpunk 2077")).toBe(
+			true,
+		);
+	});
+
+	it("una búsqueda vacía o de espacios no filtra", () => {
+		expect(videoPage(videos, "all", 1, "").total).toBe(4);
+		expect(videoPage(videos, "all", 1, "   ").total).toBe(4);
+	});
+});

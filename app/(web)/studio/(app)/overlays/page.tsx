@@ -4,6 +4,7 @@ import { EventsNotice } from "@/components/studio/EventsNotice";
 import { OverlaySources } from "@/components/studio/OverlaySources";
 import { effectivePhrases, readSettings } from "@/lib/alerts/settings";
 import { env } from "@/lib/env";
+import { canvasOf } from "@/lib/overlay/canvas";
 import { getOrCreateToken } from "@/lib/overlay/token";
 import { getMainProfile } from "@/lib/profile";
 import { sceneFooter } from "@/lib/profile/schedule";
@@ -14,8 +15,14 @@ export const metadata: Metadata = { title: "Overlays · Estudio · Scaena", robo
 export const dynamic = "force-dynamic";
 
 // Estudio · Overlays. La sesión se comprueba de verdad aquí, no solo en `proxy.ts` (specs/obs-overlays).
-export default async function OverlaysPage() {
+export default async function OverlaysPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ tab?: string; canvas?: string }>;
+}) {
 	const session = await requirePageSession();
+	const q = await searchParams;
+	const { tab } = q;
 	const profile = getMainProfile();
 	const s = store();
 	const [token, settings] = await Promise.all([
@@ -36,6 +43,8 @@ export default async function OverlaysPage() {
 				footer={sceneFooter(profile.schedule)}
 				scenes={profile.scenes}
 				phrases={effectivePhrases(profile, settings)}
+				tab={tab === "scenes" ? "scenes" : "pieces"}
+				canvas={canvasOf(q).id}
 			/>
 		</>
 	);
