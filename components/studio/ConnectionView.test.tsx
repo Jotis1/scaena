@@ -1,3 +1,5 @@
+import { Table } from "@jotis-me/react";
+import { isValidElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TWITCH_SCOPES } from "@/lib/auth";
@@ -42,4 +44,27 @@ describe("conexión con Twitch", () => {
 		expect(html.indexOf("Twitch ha revocado")).toBeLessThan(html.indexOf("<table"));
 		expect(primaries(html)).toBe(1);
 	});
+
+	// ConnectionView se pinta en el servidor y `Table` es de cliente: sus props no pueden llevar funciones (en
+	// producción, «Functions cannot be passed directly to Client Components»). renderToStaticMarkup no lo detecta.
+	it("a la tabla no le llegan funciones", () => {
+		const tree = ConnectionView({
+			status: { rows: rows((t) => (t === "channel.raid" ? "revoked" : "enabled")) },
+			name: "jotis_1",
+			connect: noop,
+			disconnect: noop,
+		});
+		const table = findTable(tree);
+		if (!table) throw new Error("no hay tabla");
+		const { columns, rows: tableRows } = table.props as { columns: object[]; rows: object[] };
+		for (const c of [...columns, ...tableRows])
+			for (const [k, v] of Object.entries(c)) expect(typeof v, k).not.toBe("function");
+	});
 });
+
+function findTable(node: unknown): ReactElement<Record<string, unknown>> | undefined {
+	if (Array.isArray(node)) return node.map(findTable).find(Boolean);
+	if (!isValidElement<Record<string, unknown>>(node)) return undefined;
+	if (node.type === Table) return node;
+	return findTable(node.props.children);
+}

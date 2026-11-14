@@ -1,6 +1,6 @@
 {
 	"name": "scaena",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"private": true,
 	"description": "Overlays de OBS, estudio y web del canal de la suite jotis.me",
 	"license": "MIT",
