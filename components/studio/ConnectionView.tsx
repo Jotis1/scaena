@@ -69,32 +69,29 @@ export function ConnectionView({
 				title="Suscripciones de eventos"
 				count={activeCount(status.rows)}
 				description="Lo que Twitch le cuenta a Scaena. Si una se cae, su overlay deja de enterarse."
+				// Este es un componente de servidor y `Table` es de cliente: nada de `render` (una función no cruza la
+				// frontera). Las celdas van ya pintadas en cada fila.
 				columns={[
 					{ key: "label", label: "Evento", primary: true },
-					{
-						key: "type",
-						label: "Tipo en Twitch",
-						render: (r: Row) => <span className="font-mono text-[13px]">{r.type}</span>,
-					},
-					{ key: "state", label: "Estado", render: (r: Row) => <StateBadge state={r.state} /> },
-					{
-						key: "action",
-						label: <span className="sr-only">Acción</span>,
-						align: "right",
-						render: (r: Row) =>
-							r.state === "revoked" || r.state === "missing" ? (
-								// Un solo botón principal por vista: el de la primera fila rota.
-								<ReactivateButton action={connect} primary={r.index === firstBroken} />
-							) : null,
-					},
+					{ key: "type", label: "Tipo en Twitch" },
+					{ key: "state", label: "Estado" },
+					{ key: "action", label: <span className="sr-only">Acción</span>, align: "right" },
 				]}
-				rows={status.rows.map((r, index) => ({ ...r, index, label: SUBSCRIPTION_LABELS[r.type] }))}
+				rows={status.rows.map((r, index) => ({
+					id: r.type,
+					label: SUBSCRIPTION_LABELS[r.type],
+					type: <span className="font-mono text-[13px]">{r.type}</span>,
+					state: <StateBadge state={r.state} />,
+					action:
+						r.state === "revoked" || r.state === "missing" ? (
+							// Un solo botón principal por vista: el de la primera fila rota.
+							<ReactivateButton action={connect} primary={index === firstBroken} />
+						) : null,
+				}))}
 			/>
 		</div>
 	);
 }
-
-type Row = SubscriptionRow & { index: number; label: string };
 
 function StateBadge({ state }: { state: SubscriptionRow["state"] }) {
 	if (state === "enabled")
