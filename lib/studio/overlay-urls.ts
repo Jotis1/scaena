@@ -1,7 +1,6 @@
 // URL de cada fuente de navegador del estudio (diseño: «Overlays»; design.md, decisiones 9, 10 y 15). Solo los
 // parámetros que no son el valor por defecto, para que la URL se lea. Las que reciben eventos llevan `token`; la
-// meta, además, `since` (la hora a la que se copia).
-import type { GoalType } from "../alerts/goal";
+// las escenas montadas, además, `since` (la hora a la que se copia), por si no hay meta guardada y cuenta la URL.
 import { type CanvasId, DEFAULT_CANVAS } from "../overlay/canvas";
 
 export type SourceKind =
@@ -23,10 +22,6 @@ export interface SourceOptions {
 	animate?: boolean;
 	message?: boolean;
 	rows?: number;
-	goalType?: GoalType;
-	label?: string;
-	start?: number;
-	goal?: number;
 	viewers?: boolean;
 	ratio?: string;
 	name?: string;
@@ -67,12 +62,9 @@ export function sourceUrl(kind: SourceKind, o: SourceOptions, c: UrlContext): st
 		case "events":
 			if (o.rows !== undefined) q.set("rows", String(o.rows));
 			break;
+		// La meta se guarda en Scaena y llega por el flujo: la URL solo lleva el token (specs/obs-overlays, «Meta
+		// editable en el estudio»). Las URL antiguas con `type`, `start` y `goal` siguen valiendo sin meta guardada.
 		case "goal":
-			q.set("type", o.goalType ?? "subs");
-			if (o.label) q.set("label", o.label);
-			q.set("start", String(o.start ?? 0));
-			q.set("goal", String(o.goal ?? 100));
-			q.set("since", String(c.now));
 			break;
 		case "status":
 			flag("viewers", o.viewers, false);

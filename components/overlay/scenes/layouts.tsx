@@ -1,5 +1,8 @@
 import { BackgroundPattern } from "@jotis-me/react";
 import type { ReactNode } from "react";
+import { type Box, CAMERA_HOLE, gameCamera } from "./boxes";
+
+export { CAMERA_HOLE };
 
 // Posiciones de las escenas montadas (diseño: «Escena de juego» y «Escena de Just Chatting»). Solo colocan: las
 // piezas llegan hechas, en vivo en el overlay (GameScene, ChattingScene) o con datos de ejemplo en la vista previa
@@ -45,17 +48,23 @@ export function GameLayout({ width = 1920, ...s }: SceneSlots) {
 					{s.events}
 				</div>
 			) : null}
-			{s.camera ? (
-				<div className="absolute right-12 bottom-12" data-piece="camera">
-					{s.camera}
-				</div>
-			) : null}
+			{s.camera ? <CameraSlot box={gameCamera(width)}>{s.camera}</CameraSlot> : null}
 		</div>
 	);
 }
 
-/** Hueco de la cámara en Just Chatting: 1216×684 en (64, 112), con el radio de `CamFrame` (16 px). */
-export const CAMERA_HOLE = { x: 64, y: 112, width: 1216, height: 684, radius: 16 };
+/** La cámara va en su caja de `boxes.ts`, la misma que da la guía de OBS. */
+function CameraSlot({ box, children }: { box: Box; children: ReactNode }) {
+	return (
+		<div
+			className="absolute"
+			style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+			data-piece="camera"
+		>
+			{children}
+		</div>
+	);
+}
 
 /** Máscara del fondo: opaco salvo el hueco de la cámara, que pone OBS debajo. Solo opacidad, sin color. */
 function backgroundMask(width: number): string {
@@ -85,11 +94,7 @@ export function ChattingLayout({ width = 1920, ...s }: SceneSlots) {
 			<div className="absolute top-10 left-16" data-piece="status">
 				{s.status}
 			</div>
-			{s.camera ? (
-				<div className="absolute top-[112px] left-16" data-piece="camera">
-					{s.camera}
-				</div>
-			) : null}
+			{s.camera ? <CameraSlot box={CAMERA_HOLE}>{s.camera}</CameraSlot> : null}
 			<div className="absolute top-[836px] left-16 flex items-start gap-12">
 				{s.goal ? <div data-piece="goal">{s.goal}</div> : null}
 				{s.events ? <div data-piece="events">{s.events}</div> : null}

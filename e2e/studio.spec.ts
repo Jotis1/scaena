@@ -1,4 +1,6 @@
-import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page, test } from "@playwright/test";
+import { F, twitchEvent } from "./eventsub";
 import { CHANNEL_ID, redis, seedChannel } from "./redis";
 import { createStudioUser, SESSION_COOKIE, type StudioUser, signCookie, signInAs } from "./session";
 
@@ -37,7 +39,7 @@ test.describe("armazón", () => {
 		page,
 	}) => {
 		await page.setViewportSize({ width: 1920, height: 1080 });
-		for (const path of ["/studio/overlays", "/studio/assets", "/studio/connection"]) {
+		for (const path of ["/studio/overlays", "/studio/guide", "/studio/assets", "/studio/connection"]) {
 			await page.goto(path);
 			const gaps = await page.locator("main").evaluate((main) => {
 				// La barra lateral es lo de antes del contenedor de `main`.
@@ -66,7 +68,7 @@ test.describe("armazón", () => {
 	});
 
 	test("sin migas: cada página lleva el botón de tema en su cabecera", async ({ page }) => {
-		for (const path of ["/studio/overlays", "/studio/assets", "/studio/connection"]) {
+		for (const path of ["/studio/overlays", "/studio/guide", "/studio/assets", "/studio/connection"]) {
 			await page.goto(path);
 			await expect(page.getByRole("navigation", { name: "Ruta en el estudio" })).toHaveCount(0);
 			const header = page
@@ -132,9 +134,11 @@ test.describe("overlays", () => {
 		expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
 			new RegExp(`token=${token}$`),
 		);
-		// La meta, con `since`.
+		// La meta solo lleva el token: se guarda en Scaena.
 		const goal = page.getByRole("article", { name: "Meta" });
-		await expect(goal.locator('[data-url="goal"]')).toHaveValue(/since=\d{13}/);
+		await expect(goal.locator('[data-url="goal"]')).toHaveValue(
+			new RegExp(`/overlay/jotis_1/goal\\?token=••••${token.slice(-4)}$`),
+		);
 		// «Enseñar espectadores», desactivado por defecto.
 		await expect(page.getByRole("switch", { name: "Enseñar espectadores" })).not.toBeChecked();
 	});
@@ -284,4 +288,215 @@ test.describe("overlays", () => {
 		await expect(card).toContainText("Canal de prueba", { timeout: 10_000 });
 		await expect(card).toContainText("Llega con 1.284 personas. Bienvenidas.");
 	});
+});
+
+// specs/obs-overlays, «Guía de montaje en OBS» y «Máscara de la cámara».
+test.describe("guía de OBS", () => {
+	const section = (page: Page, id: string) => page.locator(`section#${id}`);
+	const row = (page: Page, id: string, name: string) =>
+		section(page, id)
+			.getByRole("row")
+			.filter({ has: page.getByText(name, { exact: true }) });
+
+	test("medidas de la escena de juego en 1920 × 1080, en orden de capas", async ({ page }) => {
+		await page.goto("/studio/guide");
+		await expect(page.getByRole("heading", { level: 1, name: "Guía de OBS" })).toBeVisible();
+		const nav = page.getByRole("navigation", { name: "Estudio" });
+		await expect(nav.getByRole("link", { name: "Guía de OBS" })).toHaveAttribute("aria-current", "page");
+		const camera = row(page, "game", "Cámara");
+		await expect(camera).toContainText("x 1488 · y 816");
+		await expect(camera).toContainText("384 × 216");
+		// De arriba abajo: la escena de Scaena, la cámara y el juego.
+		const names = await section(page, "game").getByRole("row").allInnerTexts();
+		const cells = (t: string) => t.split(/[\t\n]/).map((c) => c.trim());
+		const order = ["Scaena · Juego", "Cámara", "Juego"].map((n) =>
+			names.findIndex((t) => cells(t).includes(n)),
+		);
+		expect(order.every((v, i) => v > 0 && (i === 0 || v > (order[i - 1] ?? 0)))).toBe(true);
+		await expect(row(page, "chatting", "Cámara")).toContainText("x 64 · y 112");
+		await expect(section(page, "chatting")).toContainText("Aquí no hace falta máscara");
+		const axe = await new AxeBuilder({ page }).analyze();
+		expect(axe.violations.map((v) => v.id)).toEqual([]);
+	});
+
+	test("medidas en ultrapanorámico", async ({ page }) => {
+		await page.goto("/studio/guide");
+		await page.getByRole("button", { name: /Lienzo/ }).click();
+		await page.getByRole("option", { name: "3440 × 1440" }).click();
+		await expect(page).toHaveURL(/\/studio\/guide\?canvas=3440x1440$/);
+		await expect(row(page, "game", "Scaena · Juego")).toContainText("3440 × 1440");
+		const camera = row(page, "game", "Cámara");
+		await expect(camera).toContainText("x 2864 · y 1088");
+		await expect(camera).toContainText("512 × 288");
+	});
+
+	test("descargar la máscara: PNG 16:9, blanco dentro y transparente en las esquinas", async ({ page }) => {
+		await page.goto("/studio/guide");
+		const link = section(page, "game").getByRole("link", { name: "Descargar máscara" });
+		await expect(link).toHaveAttribute("download", "");
+		const href = (await link.getAttribute("href")) ?? "";
+		const res = await page.request.get(href);
+		expect(res.headers()["content-type"]).toBe("image/png");
+		const px = await page.evaluate(async (src) => {
+			const img = new Image();
+			img.src = src;
+			await img.decode();
+			const c = document.createElement("canvas");
+			c.width = img.naturalWidth;
+			c.height = img.naturalHeight;
+			const g = c.getContext("2d");
+			if (!g) throw new Error("sin canvas");
+			g.drawImage(img, 0, 0);
+			const at = (x: number, y: number) => Array.from(g.getImageData(x, y, 1, 1).data);
+			return {
+				size: [img.naturalWidth, img.naturalHeight],
+				corner: at(0, 0),
+				center: at(960, 540),
+				edge: at(960, 0),
+			};
+		}, href);
+		expect(px.size).toEqual([1920, 1080]);
+		expect(px.corner[3]).toBe(0);
+		expect(px.center).toEqual([255, 255, 255, 255]);
+		// El borde recto, lejos de las esquinas, ya es opaco: solo se recortan las esquinas.
+		expect(px.edge[3]).toBe(255);
+	});
+
+	test("«Cómo montarla» lleva a su sección con el mismo lienzo", async ({ page }) => {
+		await page.goto("/studio/overlays?tab=scenes&canvas=3440x1440");
+		await page
+			.getByRole("article", { name: "Juego" })
+			.getByRole("link", { name: "Cómo montarla" })
+			.click();
+		await expect(page).toHaveURL(/\/studio\/guide\?canvas=3440x1440#game$/);
+		await expect(row(page, "game", "Cámara")).toContainText("512 × 288");
+		await expect(section(page, "game")).toBeInViewport();
+		await page.goto("/studio/overlays?tab=scenes");
+		await page
+			.getByRole("article", { name: "Offline" })
+			.getByRole("link", { name: "Cómo montarla" })
+			.click();
+		await expect(page).toHaveURL(/\/studio\/guide#fullscreen$/);
+	});
+});
+
+// specs/obs-overlays, «Meta editable en el estudio», y specs/twitch-events, «Eventos recientes y metas»: contra el
+// servidor de verdad, con el flujo SSE real y eventos firmados al webhook.
+test.describe("meta guardada en vivo", () => {
+	const SUBS = { type: "subs", label: "Subs del mes", target: 300 };
+	const bar = (page: Page) => page.getByRole("progressbar");
+	async function tokenOf(page: Page) {
+		await page.goto("/studio/overlays");
+		return String(await redis("GET", `channel:${CHANNEL_ID}:token`));
+	}
+	const saveGoal = (page: Page, data: object) => page.request.put("/api/studio/settings", { data });
+
+	test("cambiar el objetivo llega a la escena de juego abierta, sin recargarla", async ({
+		page,
+		context,
+	}) => {
+		const token = await tokenOf(page);
+		expect((await saveGoal(page, { goal: SUBS, current: 290 })).status()).toBe(200);
+		const obs = await context.newPage();
+		await obs.setViewportSize({ width: 1920, height: 1080 });
+		await obs.goto(`/overlay/jotis_1/scene/game?token=${token}`);
+		await expect(bar(obs)).toHaveAttribute("aria-valuenow", "290");
+		await expect(bar(obs)).toHaveAttribute("aria-valuemax", "300");
+		// Si la página se recargara, esta marca desaparecería.
+		await obs.evaluate(() => {
+			(window as unknown as { sinRecargar: boolean }).sinRecargar = true;
+		});
+		await saveGoal(page, { goal: { ...SUBS, target: 350 } });
+		await expect(bar(obs)).toHaveAttribute("aria-valuemax", "350", { timeout: 10_000 });
+		await expect(bar(obs)).toHaveAttribute("aria-valuenow", "290");
+		expect(await obs.evaluate(() => (window as unknown as { sinRecargar?: boolean }).sinRecargar)).toBe(
+			true,
+		);
+	});
+
+	test("con la pieza y la escena abiertas, una sub sube las dos en 1 y la cuenta guardada también", async ({
+		page,
+		context,
+	}) => {
+		const token = await tokenOf(page);
+		await saveGoal(page, { goal: SUBS, current: 290 });
+		const piece = await context.newPage();
+		const scene = await context.newPage();
+		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
+		await scene.goto(`/overlay/jotis_1/scene/game?token=${token}`);
+		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "290");
+		await expect(bar(scene)).toHaveAttribute("aria-valuenow", "290");
+		expect(await twitchEvent(page.request, F.SUB)).toBe(204);
+		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "291", { timeout: 10_000 });
+		await expect(bar(scene)).toHaveAttribute("aria-valuenow", "291", { timeout: 10_000 });
+		expect(Number(await redis("GET", `channel:${CHANNEL_ID}:goal`))).toBe(291);
+	});
+
+	test("con OBS cerrado, tres follows suman igual: al abrir la pieza sale 43", async ({ page }) => {
+		const token = await tokenOf(page);
+		await saveGoal(page, { goal: { type: "follows", label: "Seguidores", target: 50 }, current: 40 });
+		for (let i = 0; i < 3; i++) expect(await twitchEvent(page.request, F.FOLLOW)).toBe(204);
+		await page.goto(`/overlay/jotis_1/goal?token=${token}`);
+		await expect(page.getByText("Seguidores", { exact: true })).toBeVisible();
+		await expect(bar(page)).toHaveAttribute("aria-valuenow", "43");
+	});
+});
+
+test.describe("tarjeta de la meta", () => {
+	test("guardar seguidores, 50 y «Llevas» 10 cambia la vista previa de la escena, y al recargar sigue", async ({
+		page,
+	}) => {
+		await page.goto("/studio/overlays");
+		const card = page.getByRole("article", { name: "Meta" });
+		await card.getByRole("button", { name: /Tipo/ }).click();
+		await page.getByRole("option", { name: "Seguidores" }).click();
+		await expect(card.getByRole("textbox", { name: "Texto" })).toHaveValue("Seguidores del mes");
+		await card.getByRole("textbox", { name: "Objetivo" }).fill("50");
+		await card.getByRole("textbox", { name: "Llevas" }).fill("10");
+		await card.getByRole("button", { name: "Guardar meta" }).click();
+		await expect(card.getByText("Guardada. La pieza y las escenas ya la enseñan.")).toBeVisible();
+		expect(Number(await redis("GET", `channel:${CHANNEL_ID}:goal`))).toBe(10);
+
+		await page.getByRole("tab", { name: /Escenas/ }).click();
+		// La vista previa es decorativa (`aria-hidden`): se busca por el atributo, no por el rol accesible.
+		const preview = page.locator('[data-preview="scene/game"] [role="progressbar"]');
+		await expect(preview).toHaveAttribute("aria-valuenow", "10");
+		await expect(preview).toHaveAttribute("aria-valuemax", "50");
+
+		await page.goto("/studio/overlays");
+		const again = page.getByRole("article", { name: "Meta" });
+		await expect(again.getByRole("textbox", { name: "Texto" })).toHaveValue("Seguidores del mes");
+		await expect(again.getByRole("textbox", { name: "Objetivo" })).toHaveValue("50");
+		await expect(again.getByRole("textbox", { name: "Llevas" })).toHaveValue("10");
+	});
+
+	test("objetivo 0: no se guarda y lo dice en el campo", async ({ page }) => {
+		await page.goto("/studio/overlays");
+		const card = page.getByRole("article", { name: "Meta" });
+		await card.getByRole("textbox", { name: "Objetivo" }).fill("0");
+		await card.getByRole("button", { name: "Guardar meta" }).click();
+		await expect(card.getByText("El objetivo tiene que ser mayor que cero.")).toBeVisible();
+		expect(await redis("GET", `channel:${CHANNEL_ID}:settings`)).toBeNull();
+	});
+});
+
+// Capturas para revisar a mano (`E2E_SHOTS=<carpeta>`): la guía en los dos lienzos, en claro y oscuro, y la meta.
+test.describe("capturas de la guía y la meta", () => {
+	test.skip(!process.env.E2E_SHOTS, "solo con E2E_SHOTS");
+	for (const scheme of ["light", "dark"] as const)
+		test(`guía y meta en ${scheme}`, async ({ page }) => {
+			await page.emulateMedia({ colorScheme: scheme });
+			await page.setViewportSize({ width: 1440, height: 900 });
+			for (const canvas of ["1920x1080", "3440x1440"]) {
+				await page.goto(`/studio/guide${canvas === "1920x1080" ? "" : `?canvas=${canvas}`}`);
+				await page.screenshot({
+					path: `${process.env.E2E_SHOTS}/guide-${canvas}-${scheme}.png`,
+					fullPage: true,
+				});
+			}
+			await page.goto("/studio/overlays");
+			await page
+				.getByRole("article", { name: "Meta" })
+				.screenshot({ path: `${process.env.E2E_SHOTS}/goal-card-${scheme}.png` });
+		});
 });

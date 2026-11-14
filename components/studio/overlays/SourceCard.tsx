@@ -1,7 +1,7 @@
 "use client";
 
-import { CardHeader, Input, TransparencyGrid } from "@jotis-me/react";
-import { Check, Copy01 } from "@untitledui/icons";
+import { Button, CardHeader, Input, TransparencyGrid } from "@jotis-me/react";
+import { BookOpen01, Check, Copy01 } from "@untitledui/icons";
 import { type ReactNode, useState } from "react";
 import { maskToken, type SourceKind, type SourceOptions, sourceUrl } from "@/lib/studio/overlay-urls";
 
@@ -18,6 +18,8 @@ export interface SourceCardProps {
 	/** Alto de la caja de la vista previa: 202 (16:9) o 151 (21:9, para 3440 × 1440). */
 	previewHeight?: number;
 	controls: ReactNode;
+	/** Su sección de la guía de OBS, en la cabecera como «Cómo montarla». */
+	guide?: string;
 }
 
 /**
@@ -35,12 +37,13 @@ export function SourceCard({
 	preview,
 	previewHeight = 202,
 	controls,
+	guide,
 }: SourceCardProps) {
 	const [now, setNow] = useState(() => Date.now());
 	const [copied, setCopied] = useState(false);
 	const url = sourceUrl(kind, options, { ...ctx, now });
 	const copy = async () => {
-		// La meta cuenta desde que se copia: `since` es ahora.
+		// `since` es la hora a la que se copia.
 		const fresh = Date.now();
 		setNow(fresh);
 		await navigator.clipboard.writeText(sourceUrl(kind, options, { ...ctx, now: fresh }));
@@ -49,7 +52,19 @@ export function SourceCard({
 	};
 	return (
 		<article aria-label={title} className="overflow-hidden rounded-xl border border-secondary bg-primary">
-			<CardHeader title={title} badge={size} badgeColor="gray" description={desc} />
+			<CardHeader
+				title={title}
+				badge={size}
+				badgeColor="gray"
+				description={desc}
+				actions={
+					guide ? (
+						<Button href={guide} hierarchy="link-color" size="sm" iconLeading={BookOpen01}>
+							Cómo montarla
+						</Button>
+					) : null
+				}
+			/>
 			<div className="flex flex-wrap gap-6 px-6 pt-5 pb-6">
 				<TransparencyGrid
 					size="sm"

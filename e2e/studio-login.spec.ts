@@ -5,6 +5,9 @@ test("sin sesión, el estudio lleva a la entrada", async ({ page }) => {
 	await expect(page).toHaveURL(/\/studio\/login$/);
 	await expect(page.getByRole("heading", { name: "Entra en el Estudio" })).toBeVisible();
 	await expect(page.getByRole("button", { name: "Entrar con Twitch" })).toBeVisible();
+	// La guía de OBS y su máscara, también.
+	await page.goto("/studio/guide");
+	await expect(page).toHaveURL(/\/studio\/login$/);
 });
 
 test("la API del estudio responde 401 sin sesión", async ({ request }) => {

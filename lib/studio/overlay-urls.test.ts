@@ -27,18 +27,10 @@ describe("URL de las fuentes", () => {
 		);
 	});
 
-	it("la meta lleva tipo, cifras, `since` y token", () => {
-		const u = new URL(
-			sourceUrl("goal", { goalType: "subs", label: "Subs del mes", start: 284, goal: 300 }, C),
+	it("la meta solo lleva el token: la meta se guarda en Scaena", () => {
+		expect(sourceUrl("goal", {}, C)).toBe(
+			"https://scaena.jotis.me/overlay/jotis_1/goal?token=tok-secreto-a91f",
 		);
-		expect(Object.fromEntries(u.searchParams)).toEqual({
-			type: "subs",
-			label: "Subs del mes",
-			start: "284",
-			goal: "300",
-			since: "1793822580000",
-			token: "tok-secreto-a91f",
-		});
 	});
 
 	it("escenas montadas: token y piezas quitadas con 0", () => {

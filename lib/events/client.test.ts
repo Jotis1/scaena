@@ -48,6 +48,14 @@ describe("cliente de eventos", () => {
 		expect(settings).toEqual([{ alerts: { follow: "Hola" } }]);
 	});
 
+	it("pasa la meta guardada con su cuenta", () => {
+		const goals: unknown[] = [];
+		connectEvents(URL_, { onGoal: (g) => goals.push(g) }, { EventSource: ES });
+		const g = { type: "subs", label: "Subs del mes", target: 350, current: 290 };
+		FakeSource.all[0]?.emit("goal", g, "2-0");
+		expect(goals).toEqual([g]);
+	});
+
 	it("ante un 401 no reintenta", async () => {
 		const unauthorized = vi.fn();
 		const fetch = vi.fn(async () => new Response("", { status: 401 }));

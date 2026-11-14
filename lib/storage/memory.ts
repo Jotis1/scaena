@@ -42,6 +42,12 @@ export function memoryStore(clock: () => number = Date.now): Store & { clear(): 
 			hashes.delete(key);
 			streams.delete(key);
 		},
+		async incrby(key, n) {
+			const v = alive(key);
+			const next = Number(v?.value ?? 0) + n;
+			values.set(key, { value: next, expiresAt: v?.expiresAt });
+			return next;
+		},
 		async hset(key, fields) {
 			hashes.set(key, { ...(hashes.get(key) ?? {}), ...fields });
 		},

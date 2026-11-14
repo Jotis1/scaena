@@ -20,10 +20,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CAMERA_HOLE, ChattingLayout, GameLayout } from "@/components/overlay/scenes/layouts";
 import { ThemeMenu } from "@/components/web/ThemeMenu";
-import { GOAL_LABELS, type GoalType } from "@/lib/alerts/goal";
 import { type AlertPhrases, fillPhrase } from "@/lib/alerts/phrase";
+import type { GoalState } from "@/lib/alerts/saved-goal";
 import { CANVAS_IDS, type CanvasId, canvasById, canvasLabel, DEFAULT_CANVAS } from "@/lib/overlay/canvas";
 import type { SourceKind, SourceOptions } from "@/lib/studio/overlay-urls";
+import { DEFAULT_GOAL, GoalEditor } from "./overlays/GoalEditor";
 import { PhraseEditor } from "./overlays/PhraseEditor";
 import { SourceCard, type SourceCardProps } from "./overlays/SourceCard";
 import { TestAlertsCard } from "./overlays/TestAlertsCard";
@@ -46,6 +47,8 @@ export interface OverlaySourcesProps {
 	footer: string;
 	scenes: Record<"starting" | "brb" | "ending" | "offline", SceneCopy>;
 	phrases: AlertPhrases;
+	/** La meta guardada, con su cuenta; `null` si aún no hay. */
+	goal: GoalState | null;
 	/** La pestaña de `?tab=`: «Piezas» o «Escenas». */
 	tab: OverlayTab;
 	/** El lienzo de las escenas, de `?canvas=`. */
@@ -54,6 +57,12 @@ export interface OverlaySourcesProps {
 
 /** Ancho de la caja de la vista previa. Una escena de 1920 × 1080 cabe en 360 × 202; una de 3440 × 1440, en 360 × 151. */
 const PREVIEW_WIDTH = 360;
+/** Sección de la guía de OBS de cada escena; las de pantalla completa van juntas. */
+const GUIDE_ANCHORS: Partial<Record<SourceKind, string>> = {
+	"scene/game": "game",
+	"scene/chatting": "chatting",
+};
+
 const PREVIEW_HEIGHTS: Record<CanvasId, number> = { "1920x1080": 202, "3440x1440": 151 };
 
 const SCENE_TITLES = { starting: "Empezando", brb: "Vuelvo enseguida", ending: "Final", offline: "Offline" };
@@ -79,11 +88,13 @@ export function OverlaySources(p: OverlaySourcesProps) {
 	const sceneSize = canvasLabel(canvas);
 	const [token, setToken] = useState(p.token);
 	const [phrases, setPhrases] = useState(p.phrases);
+	// La meta de las vistas previas: la guardada, o lo que se está escribiendo.
+	const [goal, setGoal] = useState<GoalState>(p.goal ?? DEFAULT_GOAL);
 	const [opts, setOpts] = useState<Record<SourceKind, SourceOptions>>({
 		chat: { translucent: true, animate: true },
 		alerts: { message: true },
 		events: { rows: 5 },
-		goal: { goalType: "subs", label: GOAL_LABELS.subs, start: 284, goal: 300 },
+		goal: {},
 		status: { viewers: false },
 		camera: { ratio: "16:9", name: p.cameraName },
 		"scene/game": { translucent: true, camera: true, events: true, goalPiece: true },
@@ -109,6 +120,8 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		router.replace(sceneHref(next), { scroll: false });
 	};
 
+	const guideHref = (c: CanvasId, kind: SourceKind) =>
+		`/studio/guide${c === DEFAULT_CANVAS ? "" : `?canvas=${c}`}#${GUIDE_ANCHORS[kind] ?? "fullscreen"}`;
 	const card = (kind: SourceKind, c: Omit<SourceCardProps, "kind" | "ctx" | "options">) => (
 		<SourceCard key={kind} kind={kind} ctx={ctx} options={opts[kind]} {...c} />
 	);
@@ -121,6 +134,7 @@ export function OverlaySources(p: OverlaySourcesProps) {
 			options={{ ...opts[kind], canvas: canvasId }}
 			size={sceneSize}
 			previewHeight={sceneBox[1]}
+			guide={guideHref(canvasId, kind)}
 			{...c}
 		/>
 	);
@@ -207,67 +221,18 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		card("goal", {
 			title: "Meta",
 			size: "420 de ancho",
-			desc: "Una barra de avance. Como mucho, dos metas a la vez.",
+			desc: "Una barra de avance. La misma meta en la pieza y en las escenas.",
 			preview: (
 				<ScaledPreview width={420} scale={0.75} box={[315, 90]}>
 					<StreamGoal
-						label={o.goal.label || GOAL_LABELS[o.goal.goalType ?? "subs"]}
-						current={o.goal.start ?? 0}
-						goal={Math.max(1, o.goal.goal ?? 1)}
+						label={goal.label}
+						current={goal.current}
+						goal={Math.max(1, goal.target)}
+						unit={goal.unit}
 					/>
 				</ScaledPreview>
 			),
-			controls: (
-				<>
-					<div className="w-38">
-						<Select
-							label="Tipo"
-							size="sm"
-							value={o.goal.goalType}
-							onChange={(v) => {
-								const goalType = v as GoalType;
-								set("goal", { goalType, label: GOAL_LABELS[goalType] });
-							}}
-							options={[
-								{ value: "subs", label: "Subs" },
-								{ value: "follows", label: "Seguidores" },
-								{ value: "bits", label: "Bits" },
-							]}
-						/>
-					</div>
-					<div className="w-45">
-						<Input
-							label="Texto"
-							size="sm"
-							value={o.goal.label}
-							maxLength={40}
-							onChange={(e) => set("goal", { label: e.target.value })}
-						/>
-					</div>
-					<div className="w-28">
-						<Input
-							label="Empieza en"
-							size="sm"
-							inputMode="numeric"
-							value={String(o.goal.start ?? 0)}
-							onChange={(e) =>
-								set("goal", { start: Number(e.target.value.replace(/\D/g, "")) || 0 })
-							}
-						/>
-					</div>
-					<div className="w-28">
-						<Input
-							label="Meta"
-							size="sm"
-							inputMode="numeric"
-							value={String(o.goal.goal ?? 0)}
-							onChange={(e) =>
-								set("goal", { goal: Number(e.target.value.replace(/\D/g, "")) || 0 })
-							}
-						/>
-					</div>
-				</>
-			),
+			controls: <GoalEditor goal={p.goal} onSaved={setGoal} onDraft={setGoal} />,
 		}),
 		card("status", {
 			title: "Estado",
@@ -351,7 +316,13 @@ export function OverlaySources(p: OverlaySourcesProps) {
 						}
 						goal={
 							o["scene/game"].goalPiece ? (
-								<StreamGoal label={GOAL_LABELS.subs} current={284} goal={300} width={400} />
+								<StreamGoal
+									label={goal.label}
+									current={goal.current}
+									goal={goal.target}
+									unit={goal.unit}
+									width={400}
+								/>
 							) : null
 						}
 						chat={
@@ -427,7 +398,13 @@ export function OverlaySources(p: OverlaySourcesProps) {
 						}
 						goal={
 							o["scene/chatting"].goalPiece ? (
-								<StreamGoal label={GOAL_LABELS.subs} current={284} goal={300} width={400} />
+								<StreamGoal
+									label={goal.label}
+									current={goal.current}
+									goal={goal.target}
+									unit={goal.unit}
+									width={400}
+								/>
 							) : null
 						}
 						events={

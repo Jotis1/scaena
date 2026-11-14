@@ -11,7 +11,9 @@ export type ChannelKeyPart =
 	| "youtube:lock"
 	| "eventsub"
 	| "token"
-	| "settings";
+	| "settings"
+	/** Cuenta de la meta guardada (un entero; specs/twitch-events, «Eventos recientes y metas»). */
+	| "goal";
 
 /** Los ids de usuario de Twitch son solo cifras. Así ningún id puede colarse en la clave de otro canal. */
 function validId(id: string): string {

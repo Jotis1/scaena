@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { GOAL_EVENT, readGoal, saveGoal } from "../../alerts/saved-goal";
 import { keys } from "../../redis/keys";
 import { memoryStore } from "../../storage/memory";
 import * as F from "./fixtures";
@@ -111,5 +112,32 @@ describe("webhook de EventSub", () => {
 		expect((await handleWebhook(headers, "no json", { store, secret: SECRET, now: clock })).status).toBe(
 			400,
 		);
+	});
+
+	describe("meta guardada", () => {
+		const SUBS = { type: "subs", label: "Subs del mes", target: 300 };
+		const goals = async () => (await events()).filter((e) => e.fields.type === GOAL_EVENT);
+
+		it("5 subs regaladas con la meta de subs en 284 la dejan en 289 y avisan a los overlays", async () => {
+			await saveGoal(store, "1337", { goal: SUBS, current: 284 });
+			expect((await request(F.GIFT)).status).toBe(204);
+			expect((await readGoal(store, "1337"))?.current).toBe(289);
+			expect(JSON.parse((await goals()).at(-1)?.fields.data ?? "{}")).toMatchObject({ current: 289 });
+		});
+
+		it("el mismo mensaje repetido por Twitch no vuelve a sumar", async () => {
+			await saveGoal(store, "1337", { goal: SUBS, current: 284 });
+			await request(F.GIFT, { id: "repetido" });
+			await request(F.GIFT, { id: "repetido" });
+			expect((await readGoal(store, "1337"))?.current).toBe(289);
+		});
+
+		it("un follow no mueve la meta de subs", async () => {
+			await saveGoal(store, "1337", { goal: SUBS, current: 284 });
+			const before = (await goals()).length;
+			await request(F.FOLLOW);
+			expect((await readGoal(store, "1337"))?.current).toBe(284);
+			expect((await goals()).length).toBe(before);
+		});
 	});
 });

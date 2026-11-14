@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, SidebarNav } from "@jotis-me/react";
-import { Grid01, Image01, Link01 } from "@untitledui/icons";
+import { BookOpen01, Grid01, Image01, Link01 } from "@untitledui/icons";
 import { usePathname, useRouter } from "next/navigation";
 import { ScaenaBrand } from "@/components/web/ScaenaBrand";
 import { authClient } from "@/lib/auth-client";
@@ -11,6 +11,7 @@ import { authClient } from "@/lib/auth-client";
 // siempre; por debajo de `lg` es una barra arriba con el menú.
 export const STUDIO_PAGES = [
 	{ href: "/studio/overlays", label: "Overlays", icon: <Grid01 size={24} /> },
+	{ href: "/studio/guide", label: "Guía de OBS", icon: <BookOpen01 size={24} /> },
 	{ href: "/studio/assets", label: "Recursos", icon: <Image01 size={24} /> },
 	{ href: "/studio/connection", label: "Conexión", icon: <Link01 size={24} /> },
 ];

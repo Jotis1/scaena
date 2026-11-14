@@ -1,5 +1,6 @@
 // Webhook de EventSub (specs/twitch-events; design.md, decisión 3). Separado de la ruta para probarlo con el
 // almacén en memoria.
+import { countGoalEvent } from "../../alerts/saved-goal";
 import { keys } from "../../redis/keys";
 import type { Store } from "../../storage/types";
 import { type Notification, normalize } from "./normalize";
@@ -76,6 +77,13 @@ export async function handleWebhook(headers: Headers, body: string, ctx: Webhook
 			{ type: "alert", data: JSON.stringify(r.event) },
 			`${now - RETENTION_MS}-0`,
 		);
+		// La meta guardada suma aquí, una sola vez por evento: ya se han descartado los reintentos. Si falla, la
+		// alerta ya ha salido y Twitch no debe reintentar; la cuenta se corrige a mano desde el estudio.
+		try {
+			await countGoalEvent(ctx.store, r.event);
+		} catch (e) {
+			console.error("No se ha podido sumar el evento a la meta:", e);
+		}
 	} else if (r.kind === "status") {
 		// Empieza o acaba el directo: la próxima consulta del estado va a Twitch (specs/live-status).
 		await ctx.store.del(keys.channel(r.channelId, "status"));

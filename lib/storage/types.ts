@@ -12,6 +12,8 @@ export interface Store {
 	/** `true` si lo guardó (con `nx`, `false` si ya existía). */
 	set(key: string, value: unknown, options?: { ex?: number; nx?: boolean }): Promise<boolean>;
 	del(key: string): Promise<void>;
+	/** Suma `n` al entero de `key` (0 si no existe) y devuelve el resultado, de una vez (`INCRBY`). */
+	incrby(key: string, n: number): Promise<number>;
 	hset(key: string, fields: Record<string, string>): Promise<void>;
 	hgetall(key: string): Promise<Record<string, string>>;
 	/** Añade al stream y recorta lo anterior a `minId` (aproximado, como `MINID ~`). */

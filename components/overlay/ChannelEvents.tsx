@@ -11,6 +11,7 @@ import {
 	useState,
 } from "react";
 import type { AlertPhrases } from "@/lib/alerts/phrase";
+import type { GoalState } from "@/lib/alerts/saved-goal";
 import { connectEvents, eventsUrl } from "@/lib/events/client";
 import type { AlertEvent } from "@/lib/twitch/eventsub/event";
 
@@ -23,6 +24,8 @@ interface ChannelEventsValue {
 	/** `false` mientras no se sepa; `true` si hay token y el servidor no lo ha rechazado. */
 	allowed: boolean;
 	phrases: AlertPhrases | null;
+	/** La meta guardada en el estudio, con la cuenta del servidor; `null` mientras no llegue ninguna. */
+	goal: GoalState | null;
 	subscribe(l: Listener): () => void;
 }
 
@@ -42,6 +45,7 @@ export function ChannelEventsProvider({
 	const listeners = useRef(new Set<Listener>());
 	const [allowed, setAllowed] = useState(Boolean(token));
 	const [phrases, setPhrases] = useState<AlertPhrases | null>(null);
+	const [goal, setGoal] = useState<GoalState | null>(null);
 
 	useEffect(() => {
 		if (!token) return;
@@ -50,6 +54,7 @@ export function ChannelEventsProvider({
 				for (const l of listeners.current) l(e, id);
 			},
 			onSettings: (s) => setPhrases(s.alerts),
+			onGoal: setGoal,
 			onUnauthorized: () => setAllowed(false),
 		});
 		return () => conn.close();
@@ -61,7 +66,7 @@ export function ChannelEventsProvider({
 			listeners.current.delete(l);
 		};
 	}, []);
-	const value = useMemo(() => ({ allowed, phrases, subscribe }), [allowed, phrases, subscribe]);
+	const value = useMemo(() => ({ allowed, phrases, goal, subscribe }), [allowed, phrases, goal, subscribe]);
 	return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

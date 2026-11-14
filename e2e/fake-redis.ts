@@ -46,6 +46,12 @@ function run(cmd: string[]): unknown {
 			});
 			return "OK";
 		}
+		case "INCRBY": {
+			const v = alive(key);
+			const next = Number(v?.value ?? 0) + Number(a[1]);
+			strings.set(key, { value: String(next), expiresAt: v?.expiresAt });
+			return next;
+		}
 		case "DEL": {
 			let n = 0;
 			for (const k of a) n += Number(strings.delete(k) || hashes.delete(k) || streams.delete(k));

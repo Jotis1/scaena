@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EventsNotice } from "@/components/studio/EventsNotice";
 import { OverlaySources } from "@/components/studio/OverlaySources";
+import { readGoal } from "@/lib/alerts/saved-goal";
 import { effectivePhrases, readSettings } from "@/lib/alerts/settings";
 import { env } from "@/lib/env";
 import { canvasOf } from "@/lib/overlay/canvas";
@@ -25,9 +26,10 @@ export default async function OverlaysPage({
 	const { tab } = q;
 	const profile = getMainProfile();
 	const s = store();
-	const [token, settings] = await Promise.all([
+	const [token, settings, goal] = await Promise.all([
 		getOrCreateToken(s, session.channelId),
 		readSettings(s, session.channelId),
+		readGoal(s, session.channelId),
 	]);
 	return (
 		<>
@@ -43,6 +45,7 @@ export default async function OverlaysPage({
 				footer={sceneFooter(profile.schedule)}
 				scenes={profile.scenes}
 				phrases={effectivePhrases(profile, settings)}
+				goal={goal}
 				tab={tab === "scenes" ? "scenes" : "pieces"}
 				canvas={canvasOf(q).id}
 			/>

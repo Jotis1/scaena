@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { CAMERA_HOLE, gameCamera, scaleBox } from "../components/overlay/scenes/boxes";
 import { alert, fakeEvents, settings } from "./sse";
 
 // specs/obs-overlays, «Escenas montadas» (design.md, decisión 15). Las posiciones son las del diseño aprobado.
@@ -50,6 +51,8 @@ test.describe("escena de juego", () => {
 		expect([chat.x, chat.y + chat.height, chat.width, chat.height]).toEqual([48, 1032, 400, 440]);
 		const cam = await box(page, "camera");
 		expect([cam.x + cam.width, cam.y + cam.height, cam.width]).toEqual([1872, 1032, 384]);
+		// La misma caja que da la guía de OBS.
+		expect(cam).toEqual(gameCamera());
 		const events = await box(page, "events");
 		expect([events.x + events.width, events.y + events.height]).toEqual([1872, 792]);
 	});
@@ -166,6 +169,7 @@ test.describe("ultrapanorámico", () => {
 		const cam = await box(page, "camera");
 		expect(cam.x + cam.width).toBeCloseTo(3440 - 48 * K, 0);
 		expect(cam.y + cam.height).toBeCloseTo(1440 - 48 * K, 0);
+		expect(scaleBox(cam, 1)).toEqual(scaleBox(gameCamera(2580), K));
 		const alerts = await box(page, "alerts");
 		expect(alerts.width).toBeCloseTo(480 * K, 0);
 		expect(alerts.x + alerts.width / 2).toBeCloseTo(1720, 0);
@@ -183,6 +187,7 @@ test.describe("ultrapanorámico", () => {
 		expect([cam.x, cam.y, cam.width, cam.height].map(Math.round)).toEqual(
 			[64, 112, 1216, 684].map((n) => Math.round(n * K)),
 		);
+		expect(scaleBox(cam, 1)).toEqual(scaleBox(CAMERA_HOLE, K));
 		// El hueco del fondo va donde la cámara, con la máscara al ancho del lienzo lógico.
 		const mask = await piece(page, "background").evaluate((el) => getComputedStyle(el).maskImage);
 		expect(decodeURIComponent(mask)).toContain("width='2580'");

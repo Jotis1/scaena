@@ -18,6 +18,9 @@ export function redisStore(r: Redis): Store {
 		async del(key) {
 			await r.del(key);
 		},
+		async incrby(key, n) {
+			return r.incrby(key, n);
+		},
 		async hset(key, fields) {
 			await r.hset(key, fields);
 		},

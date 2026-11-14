@@ -1,6 +1,6 @@
-import { effectivePhrases, readSettings, SETTINGS_EVENT } from "@/lib/alerts/settings";
 import { channelIdOf, profileOf } from "@/lib/channel";
 import { handleEvents } from "@/lib/events/handler";
+import { initialEvents } from "@/lib/events/initial";
 import { store } from "@/lib/storage/redis";
 
 // Flujo SSE de eventos para los overlays (design.md, decisión 4). Node y sin caché; se cierra solo a los 4 min,
@@ -17,9 +17,7 @@ export async function GET(request: Request) {
 		channelId: channelIdOf,
 		initial: (channelId) => async () => {
 			const profile = profileOf(login);
-			if (!profile) return [];
-			const phrases = effectivePhrases(profile, await readSettings(s, channelId));
-			return [{ event: SETTINGS_EVENT, data: JSON.stringify({ alerts: phrases }) }];
+			return profile ? initialEvents(s, channelId, profile) : [];
 		},
 	});
 }

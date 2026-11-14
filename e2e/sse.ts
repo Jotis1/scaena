@@ -5,7 +5,7 @@ import type { Page, Route } from "@playwright/test";
 
 export interface FakeEvent {
 	id?: string;
-	event: "alert" | "settings";
+	event: "alert" | "settings" | "goal";
 	data: object;
 }
 
@@ -33,6 +33,12 @@ export function alert(data: Record<string, unknown>): FakeEvent {
 export const settings = (alerts: Record<string, string> = PHRASES): FakeEvent => ({
 	event: "settings",
 	data: { alerts: { ...PHRASES, ...alerts } },
+});
+
+/** La meta guardada en el estudio, como la manda el servidor: con la cuenta en valor absoluto. */
+export const goal = (g: { type: string; label: string; target: number; current: number }): FakeEvent => ({
+	event: "goal",
+	data: g,
 });
 
 const body = (events: FakeEvent[]) =>

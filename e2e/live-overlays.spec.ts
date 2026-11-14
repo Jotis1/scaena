@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { alert, fakeEvents, settings } from "./sse";
+import { alert, fakeEvents, goal, settings } from "./sse";
 
 // specs/twitch-events y specs/obs-overlays: alertas, eventos y meta contra un flujo SSE falso.
 
@@ -122,5 +122,29 @@ test.describe("meta", () => {
 		await page.reload();
 		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "289");
 		expect(requests.every((r) => r.url.searchParams.get("since") === String(since))).toBe(true);
+	});
+
+	// specs/obs-overlays, «Meta editable en el estudio»: las URL antiguas valen mientras no haya meta guardada.
+	test("sin meta guardada, manda la URL: seguidores en 10 de 50, y un follow suma", async ({ page }) => {
+		const follow = alert({ type: "follow", user: "Berta" });
+		await fakeEvents(page, (r) => (r.n === 1 ? [settings(), follow] : [settings()]));
+		await page.goto("/overlay/jotis_1/goal?token=bueno&type=follows&start=10&goal=50");
+		await expect(page.getByText("Seguidores del mes")).toBeVisible();
+		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "11");
+		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "50");
+	});
+
+	test("con meta guardada, manda la guardada aunque la URL diga otra cosa, y no suma por su cuenta", async ({
+		page,
+	}) => {
+		const saved = goal({ type: "subs", label: "Subs del directo", target: 300, current: 284 });
+		const sub = alert({ type: "sub", user: "Carla" });
+		await fakeEvents(page, (r) => (r.n === 1 ? [settings(), saved, sub] : [settings(), saved]));
+		await page.goto("/overlay/jotis_1/goal?token=bueno&type=follows&start=10&goal=50");
+		await expect(page.getByText("Subs del directo")).toBeVisible();
+		await expect(page.getByText("Seguidores del mes")).toHaveCount(0);
+		// La sub ya va contada en la cifra del servidor: el overlay no la vuelve a sumar.
+		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "284");
+		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "300");
 	});
 });

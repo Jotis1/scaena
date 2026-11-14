@@ -4,11 +4,14 @@
 // cualquier otro fallo se vuelve a intentar con espera creciente, desde el último id recibido.
 
 import type { AlertPhrases } from "../alerts/phrase";
+import type { GoalState } from "../alerts/saved-goal";
 import type { AlertEvent } from "../twitch/eventsub/event";
 
 export interface EventsHandlers {
 	onAlert?: (e: AlertEvent, id: string) => void;
 	onSettings?: (s: { alerts: AlertPhrases }) => void;
+	/** La meta guardada con su cuenta, en valor absoluto (al conectar y cada vez que cambia). */
+	onGoal?: (g: GoalState) => void;
 	/** El token no vale: no habrá más intentos. */
 	onUnauthorized?: () => void;
 }
@@ -61,6 +64,13 @@ export function connectEvents(
 			if (msg.lastEventId) lastId = msg.lastEventId;
 			try {
 				h.onSettings?.(JSON.parse(msg.data));
+			} catch {}
+		});
+		es.addEventListener("goal", (m) => {
+			const msg = m as MessageEvent<string>;
+			if (msg.lastEventId) lastId = msg.lastEventId;
+			try {
+				h.onGoal?.(JSON.parse(msg.data));
 			} catch {}
 		});
 		es.addEventListener("error", () => {
