@@ -51,7 +51,7 @@ El estudio SHALL permitir editar una frase por tipo de alerta (follow, sub, reno
 - **THEN** los overlays la siguen usando, y el estudio la marca como errónea hasta que se corrija
 
 ### Requirement: Guía de montaje en OBS
-El estudio SHALL tener una página privada, «Guía de OBS», con una sección por escena montada (juego y Just Chatting) y una para las escenas de pantalla completa. Cada sección SHALL dar las fuentes que hay que añadir en OBS, en orden de capas de arriba abajo, con su posición y su tamaño en píxeles del lienzo elegido, y los ajustes de la fuente de navegador. Las medidas SHALL coincidir con las que usan las escenas. Las escenas montadas SHALL llevar además un esquema del lienzo a escala con sus capas.
+El estudio SHALL tener una página privada, «Guía de OBS», con una sección por escena montada (juego y Just Chatting) y una para las escenas de pantalla completa. Cada sección SHALL dar las fuentes que hay que añadir en OBS, en orden de capas de arriba abajo, con su posición y su tamaño en píxeles del lienzo elegido, y los ajustes de la fuente de navegador. Las medidas SHALL coincidir con las que usan las escenas. Las escenas montadas SHALL llevar además un esquema del lienzo a escala.
 
 #### Scenario: Medidas de la escena de juego
 - **WHEN** se abre la guía con el lienzo de 1920 × 1080

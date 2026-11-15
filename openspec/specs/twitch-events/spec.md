@@ -18,7 +18,7 @@ La entrada al estudio con Twitch SHALL pedir los permisos mínimos para leer fol
 - **THEN** el sistema no crea suscripciones repetidas
 
 ### Requirement: Aviso de eventos sin conectar
-Mientras los eventos del canal no lleguen del todo (sin conectar, con alguna suscripción revocada o sin dar de alta), las páginas de overlays y de recursos del estudio SHALL mostrar arriba un aviso que diga qué pasa y lleve a la página de conexión. El aviso MUST NOT aparecer si todas las suscripciones están activas o verificándose, ni si Twitch no responde al consultarlas.
+Mientras los eventos del canal no lleguen del todo (sin conectar, con alguna suscripción revocada o sin dar de alta), las páginas de overlays, guía de OBS y recursos del estudio SHALL mostrar, justo debajo de la navegación, un aviso que diga qué pasa y lleve a la página de conexión. El aviso MUST NOT aparecer si todas las suscripciones están activas o verificándose, ni si Twitch no responde al consultarlas.
 
 #### Scenario: Eventos sin conectar
 - **WHEN** el dueño del canal abre la página de overlays sin haber conectado los eventos
@@ -35,6 +35,10 @@ Mientras los eventos del canal no lleguen del todo (sin conectar, con alguna sus
 #### Scenario: Twitch no responde
 - **WHEN** Twitch no contesta al consultar las suscripciones
 - **THEN** la página carga sin aviso
+
+#### Scenario: En la guía, debajo de la navegación
+- **WHEN** se abre la guía de OBS sin haber conectado los eventos
+- **THEN** el aviso aparece entre la barra de secciones y el título de la página
 
 ### Requirement: Verificación de la firma
 El sistema MUST aceptar una notificación de Twitch solo si su firma es válida con el secreto configurado y su marca de tiempo no tiene más de diez minutos; en otro caso MUST rechazarla sin procesarla.
@@ -99,12 +103,13 @@ El overlay de eventos SHALL mostrar los últimos eventos del más reciente al m�
 - **THEN** las dos suman 1, y la cuenta guardada sube 1
 
 ### Requirement: Disparo de prueba
-La página privada de overlays SHALL permitir lanzar un evento de prueba de cada tipo desde "Alertas de prueba": follow, sub de nivel 1, renovación de 14 meses, 5 subs regaladas, raid de 1.284 y 500 bits. El evento de prueba llega a los overlays como uno real, con la frase de su tipo, va marcado como prueba en el registro y no aparece en el chat. El evento de prueba MUST NOT sumar a ninguna meta.
+La fuente «Alertas» de la página privada de overlays SHALL permitir lanzar un evento de prueba de cada tipo, con un botón al lado de su frase: follow, sub de nivel 1, renovación de 14 meses, 5 subs regaladas, raid de 1.284 y 500 bits. El evento de prueba llega a los overlays como uno real, con la frase guardada de su tipo, va marcado como prueba en el registro y no aparece en el chat. El evento de prueba MUST NOT sumar a ninguna meta.
 
 #### Scenario: Probar una alerta
-- **WHEN** se pulsa "Raid - 1.284" en "Alertas de prueba"
-- **THEN** el overlay de alertas abierto en OBS muestra una alerta de raid de 1.284 espectadores con la frase de raid
+- **WHEN** en la fuente «Alertas» se pulsa «Raid de 1.284»
+- **THEN** el overlay de alertas abierto en OBS muestra una alerta de raid de 1.284 espectadores con la frase de raid, y el estudio confirma «Prueba enviada a OBS: Raid de 1.284.»
 
 #### Scenario: La prueba no mueve la meta
-- **WHEN** la meta de subs está en 284 y se pulsa "5 subs regaladas" en "Alertas de prueba"
+- **WHEN** la meta de subs está en 284 y se pulsa «5 subs regaladas» en la fuente «Alertas»
 - **THEN** la alerta de prueba sale, pero la meta sigue en 284
+
