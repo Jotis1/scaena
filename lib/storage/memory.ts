@@ -54,6 +54,11 @@ export function memoryStore(clock: () => number = Date.now): Store & { clear(): 
 		async hgetall(key) {
 			return { ...(hashes.get(key) ?? {}) };
 		},
+		async hdel(key, ...fields) {
+			const h = hashes.get(key);
+			if (!h) return;
+			for (const f of fields) delete h[f];
+		},
 		async xadd(key, fields, minId) {
 			const list = streams.get(key) ?? [];
 			const ms = clock();

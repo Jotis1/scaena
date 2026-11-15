@@ -63,6 +63,12 @@ function run(cmd: string[]): unknown {
 			hashes.set(key, h);
 			return (a.length - 1) / 2;
 		}
+		case "HDEL": {
+			const h = hashes.get(key);
+			let n = 0;
+			for (const f of a.slice(1)) n += Number(h?.delete(String(f)) ?? false);
+			return n;
+		}
 		case "HGETALL":
 			return [...(hashes.get(key) ?? new Map()).entries()].flat();
 		case "XADD": {

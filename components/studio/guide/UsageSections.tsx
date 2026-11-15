@@ -80,6 +80,12 @@ export function HowItWorks() {
 					Las URL de alertas, eventos, meta y escenas llevan un token secreto. Sin él, la fuente no
 					recibe nada. Si se filtra, rótalo en Overlays y vuelve a pegar las URL.
 				</Card>
+				<Card title="4. Qué meta sale">
+					Puedes tener hasta 5 metas de Scaena, y cada una cuenta aunque no salga. En la meta de
+					Overlays eliges cuál sale en la pieza y en las escenas: una tuya, una activa en Twitch o
+					«Rotar», que va pasando por las que marques cada 10, 20 o 30 segundos, todas las fuentes a
+					la vez. Si no eliges nada, sale la primera de las tuyas.
+				</Card>
 			</div>
 			<Alert
 				color="gray"
@@ -110,7 +116,7 @@ export function ManualSteps() {
 					"En OBS, pon el lienzo base en Ajustes › Vídeo: 1920 × 1080 o 3440 × 1440, el mismo que elijas arriba.",
 					"Añade cada URL de Overlays como fuente de navegador, con el ancho y el alto de su tabla.",
 					"En la escena de juego, aplica la máscara a la cámara para que no asome por las esquinas.",
-					"Si quieres usar la meta de Twitch, créala en el panel de creador de Twitch: Scaena la enseña en vez de la suya mientras esté activa.",
+					"Si quieres usar una meta de Twitch, créala en el panel de creador de Twitch y elígela en «Qué meta sale», en la meta de Overlays. Cuando termina en Twitch, vuelve a salir tu primera meta de Scaena.",
 					"Si rotas el token, vuelve a copiar y pegar las URL que lo llevan.",
 				]}
 			/>

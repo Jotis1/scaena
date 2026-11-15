@@ -10,8 +10,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { clockOffset, type GoalView } from "@/lib/alerts/goal-pick";
 import type { AlertPhrases } from "@/lib/alerts/phrase";
-import type { GoalState } from "@/lib/alerts/saved-goal";
 import { connectEvents, eventsUrl } from "@/lib/events/client";
 import type { AlertEvent } from "@/lib/twitch/eventsub/event";
 
@@ -24,8 +24,11 @@ interface ChannelEventsValue {
 	/** `false` mientras no se sepa; `true` si hay token y el servidor no lo ha rechazado. */
 	allowed: boolean;
 	phrases: AlertPhrases | null;
-	/** La meta guardada en el estudio, con la cuenta del servidor; `null` mientras no llegue ninguna. */
-	goal: GoalState | null;
+	/**
+	 * Qué meta sale, con las cuentas del servidor y la diferencia de reloj con él (para la rotación); `null` mientras no
+	 * llegue ninguna o si el canal no tiene metas.
+	 */
+	goal: { view: GoalView; offset: number } | null;
 	subscribe(l: Listener): () => void;
 }
 
@@ -45,7 +48,7 @@ export function ChannelEventsProvider({
 	const listeners = useRef(new Set<Listener>());
 	const [allowed, setAllowed] = useState(Boolean(token));
 	const [phrases, setPhrases] = useState<AlertPhrases | null>(null);
-	const [goal, setGoal] = useState<GoalState | null>(null);
+	const [goal, setGoal] = useState<{ view: GoalView; offset: number } | null>(null);
 
 	useEffect(() => {
 		if (!token) return;
@@ -54,7 +57,7 @@ export function ChannelEventsProvider({
 				for (const l of listeners.current) l(e, id);
 			},
 			onSettings: (s) => setPhrases(s.alerts),
-			onGoal: setGoal,
+			onGoalView: (view) => setGoal({ view, offset: clockOffset(view, Date.now()) }),
 			onUnauthorized: () => setAllowed(false),
 		});
 		return () => conn.close();

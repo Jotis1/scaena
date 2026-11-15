@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { keys } from "../redis/keys";
 import { memoryStore } from "../storage/memory";
-import type { AlertEvent } from "../twitch/eventsub/event";
 import * as F from "../twitch/eventsub/fixtures";
 import { normalize } from "../twitch/eventsub/normalize";
-import { countGoalEvent, GOAL_EVENT, resolveGoal, saveGoal } from "./saved-goal";
+import { readDone, readGoalSettings, saveGoal, saveShow, twitchRef } from "./saved-goal";
 import {
-	clearTwitchGoal,
-	latestGoal,
+	endTwitchGoal,
 	parseTwitchGoal,
-	readTwitchGoal,
+	readTwitchGoals,
+	replaceTwitchGoals,
 	saveTwitchGoal,
+	type TwitchGoal,
 	twitchGoalState,
 } from "./twitch-goal";
 
@@ -21,27 +20,26 @@ const goalOf = (n: typeof F.GOAL_PROGRESS) => {
 	if (r.kind !== "goal") throw new Error(`se esperaba una meta y llegó ${r.kind}`);
 	return r;
 };
+const FOLLOWERS = goalOf(F.GOAL_PROGRESS).goal;
+const SUBS_TW: TwitchGoal = { ...goalOf(F.GOAL_BEGIN).goal, id: "subs-1", current: 10, startedAt: TS + 1 };
 const SUBS = { type: "subs", label: "Meta de subs", target: 300 } as const;
 
 // specs/twitch-events, «Seguimiento de la meta de Twitch»; specs/obs-overlays, «Meta de Twitch».
-describe("meta de Twitch", () => {
+describe("metas de Twitch", () => {
 	it("los avisos de meta se traducen con su fase", () => {
 		expect(goalOf(F.GOAL_BEGIN)).toMatchObject({ phase: "begin", channelId: CHANNEL });
-		expect(goalOf(F.GOAL_PROGRESS).goal).toMatchObject({
-			twitchType: "follower",
-			current: 950,
-			target: 1000,
-		});
+		expect(FOLLOWERS).toMatchObject({ twitchType: "follower", current: 950, target: 1000 });
 		expect(goalOf(F.GOAL_END).phase).toBe("end");
 	});
 
-	it("una meta de seguidores con texto: su texto y su unidad", () => {
-		expect(twitchGoalState(goalOf(F.GOAL_PROGRESS).goal)).toEqual({
+	it("una meta de seguidores con texto: su texto, su unidad y su ref", () => {
+		expect(twitchGoalState(FOLLOWERS)).toEqual({
 			type: "follows",
 			label: "Hacia los 1.000",
 			target: 1000,
 			unit: "seguidores",
 			current: 950,
+			ref: "twitch:12345-abc-678-defgh",
 			source: "twitch",
 		});
 	});
@@ -59,45 +57,79 @@ describe("meta de Twitch", () => {
 		expect(parseTwitchGoal({ id: "x", type: "follower" })).toBeNull();
 	});
 
-	it("manda sobre la de Scaena y, al borrarla, vuelve la de Scaena", async () => {
+	it("dos metas a la vez: el progreso de una no toca la otra", async () => {
 		const s = memoryStore();
-		await saveGoal(s, CHANNEL, { goal: SUBS, current: 10 });
-		await saveTwitchGoal(s, CHANNEL, goalOf(F.GOAL_PROGRESS).goal);
-		expect(await resolveGoal(s, CHANNEL)).toMatchObject({ source: "twitch", current: 950 });
-		await clearTwitchGoal(s, CHANNEL, "12345-abc-678-defgh");
-		expect(await resolveGoal(s, CHANNEL)).toMatchObject({ source: "scaena", current: 10 });
-	});
-
-	it("un final de otra meta no borra la que hay", async () => {
-		const s = memoryStore();
-		await saveTwitchGoal(s, CHANNEL, goalOf(F.GOAL_PROGRESS).goal);
-		await clearTwitchGoal(s, CHANNEL, "otra");
-		expect(await readTwitchGoal(s, CHANNEL)).not.toBeNull();
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		await saveTwitchGoal(s, CHANNEL, SUBS_TW);
+		await saveTwitchGoal(s, CHANNEL, { ...SUBS_TW, current: 11 });
+		expect((await readTwitchGoals(s, CHANNEL)).map((g) => [g.id, g.current])).toEqual([
+			["12345-abc-678-defgh", 950],
+			["subs-1", 11],
+		]);
 	});
 
 	it("un progreso repetido no suma dos veces", async () => {
 		const s = memoryStore();
-		const g = goalOf(F.GOAL_PROGRESS).goal;
-		await saveTwitchGoal(s, CHANNEL, g);
-		await saveTwitchGoal(s, CHANNEL, g);
-		expect((await resolveGoal(s, CHANNEL))?.current).toBe(950);
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		expect((await readTwitchGoals(s, CHANNEL)).map((g) => g.current)).toEqual([950]);
 	});
 
-	it("con meta de Twitch, la de Scaena sigue contando pero no se publica", async () => {
+	it("acaba una de dos: sigue la otra, y la que salía no cambia", async () => {
 		const s = memoryStore();
-		await saveGoal(s, CHANNEL, { goal: SUBS, current: 10 });
-		await saveTwitchGoal(s, CHANNEL, goalOf(F.GOAL_PROGRESS).goal);
-		const before = (await s.xrange(keys.channel(CHANNEL, "events"))).length;
-		const sub: AlertEvent = { id: "e", ts: TS, channelId: CHANNEL, type: "sub", user: "A" };
-		expect((await countGoalEvent(s, sub))?.current).toBe(11);
-		const after = await s.xrange(keys.channel(CHANNEL, "events"));
-		expect(after.filter((e) => e.fields.type === GOAL_EVENT)).toHaveLength(before);
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		await saveTwitchGoal(s, CHANNEL, SUBS_TW);
+		await saveShow(s, CHANNEL, { kind: "one", ref: twitchRef(FOLLOWERS.id) }, [FOLLOWERS.id, SUBS_TW.id]);
+		await endTwitchGoal(s, CHANNEL, SUBS_TW.id);
+		expect((await readTwitchGoals(s, CHANNEL)).map((g) => g.id)).toEqual([FOLLOWERS.id]);
+		const settings = await readGoalSettings(s, CHANNEL);
+		expect(settings.show).toEqual({ kind: "one", ref: twitchRef(FOLLOWERS.id) });
+		expect(settings.endedTwitch).toBeUndefined();
 	});
 
-	it("de varias metas activas, la más reciente", () => {
-		const a = { ...goalOf(F.GOAL_PROGRESS).goal, id: "a", startedAt: 1 };
-		const b = { ...a, id: "b", startedAt: 2 };
-		expect(latestGoal([a, b])?.id).toBe("b");
-		expect(latestGoal([])).toBeNull();
+	it("acaba la elegida: vuelve la de por defecto y queda el aviso con su texto", async () => {
+		const s = memoryStore();
+		await saveGoal(s, CHANNEL, { goal: SUBS });
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		await saveShow(s, CHANNEL, { kind: "one", ref: twitchRef(FOLLOWERS.id) }, [FOLLOWERS.id]);
+		await endTwitchGoal(s, CHANNEL, FOLLOWERS.id);
+		const settings = await readGoalSettings(s, CHANNEL);
+		expect(settings.show).toBeUndefined();
+		expect(settings.endedTwitch).toBe("Hacia los 1.000");
+	});
+
+	it("acaba una de la rotación: sale de ella", async () => {
+		const s = memoryStore();
+		const a = await saveGoal(s, CHANNEL, { goal: SUBS });
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		const items = [
+			{ ref: a.ref, whenDone: "keep" as const },
+			{ ref: twitchRef(FOLLOWERS.id), whenDone: "keep" as const },
+		];
+		await saveShow(s, CHANNEL, { kind: "rotate", every: 10, items }, [FOLLOWERS.id]);
+		await endTwitchGoal(s, CHANNEL, FOLLOWERS.id);
+		expect((await readGoalSettings(s, CHANNEL)).show).toEqual({
+			kind: "rotate",
+			every: 10,
+			items: [items[0]],
+		});
+	});
+
+	it("la que llega a su objetivo se apunta como cumplida, y al acabar se olvida", async () => {
+		const s = memoryStore();
+		await saveTwitchGoal(s, CHANNEL, { ...FOLLOWERS, current: 1000 });
+		expect(Object.keys(await readDone(s, CHANNEL))).toEqual([twitchRef(FOLLOWERS.id)]);
+		await endTwitchGoal(s, CHANNEL, FOLLOWERS.id);
+		expect(await readDone(s, CHANNEL)).toEqual({});
+	});
+
+	it("sustituir por lo que hay en Twitch: las que ya no están terminan y se guardan las nuevas", async () => {
+		const s = memoryStore();
+		await saveGoal(s, CHANNEL, { goal: SUBS });
+		await saveTwitchGoal(s, CHANNEL, FOLLOWERS);
+		await saveShow(s, CHANNEL, { kind: "one", ref: twitchRef(FOLLOWERS.id) }, [FOLLOWERS.id]);
+		await replaceTwitchGoals(s, CHANNEL, [SUBS_TW]);
+		expect((await readTwitchGoals(s, CHANNEL)).map((g) => g.id)).toEqual(["subs-1"]);
+		expect((await readGoalSettings(s, CHANNEL)).endedTwitch).toBe("Hacia los 1.000");
 	});
 });

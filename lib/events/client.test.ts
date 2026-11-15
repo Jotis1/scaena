@@ -48,12 +48,13 @@ describe("cliente de eventos", () => {
 		expect(settings).toEqual([{ alerts: { follow: "Hola" } }]);
 	});
 
-	it("pasa la meta guardada con su cuenta", () => {
-		const goals: unknown[] = [];
-		connectEvents(URL_, { onGoal: (g) => goals.push(g) }, { EventSource: ES });
-		const g = { type: "subs", label: "Subs del mes", target: 350, current: 290 };
-		FakeSource.all[0]?.emit("goal", g, "2-0");
-		expect(goals).toEqual([g]);
+	it("pasa la vista de la meta, y descarta la que no lo parece", () => {
+		const views: unknown[] = [];
+		connectEvents(URL_, { onGoalView: (v) => views.push(v) }, { EventSource: ES });
+		const v = { kind: "one", goal: { type: "subs", label: "Subs del mes", target: 350, current: 290 } };
+		FakeSource.all[0]?.emit("goal-view", v, "2-0");
+		FakeSource.all[0]?.emit("goal-view", { kind: "rotate", goals: [] }, "3-0");
+		expect(views).toEqual([v]);
 	});
 
 	it("ante un 401 no reintenta", async () => {

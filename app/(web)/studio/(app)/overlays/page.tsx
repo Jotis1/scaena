@@ -5,9 +5,8 @@ import { Suspense } from "react";
 import { EventsNotice } from "@/components/studio/EventsNotice";
 import { OverlaySources } from "@/components/studio/OverlaySources";
 import { StudioContent } from "@/components/studio/StudioContent";
-import { readGoal } from "@/lib/alerts/saved-goal";
+import { goalOverview } from "@/lib/alerts/goal-view";
 import { effectivePhrases, readSettings } from "@/lib/alerts/settings";
-import { readTwitchGoal, twitchGoalState } from "@/lib/alerts/twitch-goal";
 import { env } from "@/lib/env";
 import { canvasOf } from "@/lib/overlay/canvas";
 import { getOrCreateToken } from "@/lib/overlay/token";
@@ -16,7 +15,7 @@ import { sceneFooter } from "@/lib/profile/schedule";
 import { store } from "@/lib/storage/redis";
 import { sourceOf } from "@/lib/studio/overlay-sources";
 import { requirePageSession } from "@/lib/studio/session";
-import { syncTwitchGoal } from "@/lib/twitch/goals";
+import { syncTwitchGoals } from "@/lib/twitch/goals";
 import { goalSyncDeps } from "@/lib/twitch/server";
 
 export const metadata: Metadata = { title: "Overlays · Estudio · Scaena", robots: { index: false } };
@@ -32,15 +31,15 @@ export default async function OverlaysPage({
 	const q = await searchParams;
 	const profile = await loadMainProfile();
 	const s = store();
-	const [token, settings, goal, twitchGoal] = await Promise.all([
+	const [token, settings, goals] = await Promise.all([
 		getOrCreateToken(s, session.channelId),
 		readSettings(s, session.channelId),
-		readGoal(s, session.channelId),
-		readTwitchGoal(s, session.channelId),
+		goalOverview(s, session.channelId),
 	]);
-	// La meta de Twitch se pregunta después de contestar: la página no espera a Twitch (design.md, decisión 6).
+	// Las metas de Twitch se preguntan después de contestar: la página no espera a Twitch (design.md, decisión 6). Si
+	// han cambiado, la vista previa las tendrá al volver a abrir Overlays; OBS, en el momento.
 	const h = await headers();
-	after(() => syncTwitchGoal(goalSyncDeps(h), session.channelId));
+	after(() => syncTwitchGoals(goalSyncDeps(h), session.channelId));
 	return (
 		<>
 			{/* Sin esperar a Twitch: el aviso llega cuando llegue. */}
@@ -56,8 +55,7 @@ export default async function OverlaysPage({
 					footer={sceneFooter(profile.schedule)}
 					scenes={profile.scenes}
 					phrases={effectivePhrases(profile, settings)}
-					goal={goal}
-					twitchGoal={twitchGoal ? twitchGoalState(twitchGoal) : null}
+					goals={goals}
 					source={sourceOf(q)}
 					canvas={canvasOf(q).id}
 				/>

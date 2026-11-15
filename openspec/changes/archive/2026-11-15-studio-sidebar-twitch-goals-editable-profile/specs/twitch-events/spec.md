@@ -16,7 +16,7 @@ La entrada al estudio con Twitch SHALL pedir los permisos mínimos para leer fol
 - **THEN** la página dice que falta el permiso para leer las metas y ofrece «Volver a entrar con Twitch»
 
 ### Requirement: Eventos recientes y metas
-El overlay de eventos SHALL mostrar los últimos eventos del más reciente al más antiguo. El overlay de meta SHALL avanzar con los eventos del tipo que cuenta la meta de Scaena (suscripciones, seguidores o bits) desde un valor inicial dado, con un texto propio, salvo que haya una meta de Twitch activa, que manda. Con una meta guardada, la cuenta SHALL llevarla el servidor: cada evento que cuenta SHALL sumar una sola vez aunque haya varios overlays abiertos o ninguno, y un overlay que se abre SHALL verla al día.
+El overlay de eventos SHALL mostrar los últimos eventos del más reciente al más antiguo. El overlay de meta SHALL avanzar con los eventos del tipo que cuenta la meta de Scaena (suscripciones, seguidores o bits) desde un valor inicial y con un texto propio, salvo con una meta de Twitch activa. Con una meta guardada, la cuenta SHALL llevarla el servidor: cada evento que cuenta SHALL sumar una sola vez aunque haya varios overlays abiertos o ninguno, y un overlay al abrirse SHALL verla al día.
 
 #### Scenario: Meta de subs
 - **WHEN** la meta cuenta suscripciones, empieza en 284 y llega una sub regalada de 5

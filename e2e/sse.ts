@@ -5,7 +5,7 @@ import type { Page, Route } from "@playwright/test";
 
 export interface FakeEvent {
 	id?: string;
-	event: "alert" | "settings" | "goal";
+	event: "alert" | "settings" | "goal-view";
 	data: object;
 }
 
@@ -35,10 +35,10 @@ export const settings = (alerts: Record<string, string> = PHRASES): FakeEvent =>
 	data: { alerts: { ...PHRASES, ...alerts } },
 });
 
-/** La meta guardada en el estudio, como la manda el servidor: con la cuenta en valor absoluto. */
+/** La meta que sale, como la manda el servidor (`goal-view`): con la cuenta en valor absoluto. */
 export const goal = (g: { type: string; label: string; target: number; current: number }): FakeEvent => ({
-	event: "goal",
-	data: g,
+	event: "goal-view",
+	data: { kind: "one", goal: { ref: "scaena:abcd1234", source: "scaena", ...g } },
 });
 
 const body = (events: FakeEvent[]) =>

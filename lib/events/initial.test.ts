@@ -13,7 +13,7 @@ describe("al conectar", () => {
 		expect(events.map((e) => e.event)).toEqual(["settings"]);
 	});
 
-	it("con meta guardada, las frases y la meta con la cuenta al día", async () => {
+	it("con meta guardada, las frases y la vista de la meta con la cuenta al día", async () => {
 		const s = memoryStore();
 		await saveGoal(s, "1337", {
 			goal: { type: "follows", label: "Seguidores", target: 50 },
@@ -21,13 +21,10 @@ describe("al conectar", () => {
 		});
 		const [settings, goal] = await initialEvents(s, "1337", profile);
 		expect(settings?.event).toBe("settings");
-		expect(goal?.event).toBe("goal");
-		expect(JSON.parse(goal?.data ?? "{}")).toEqual({
-			type: "follows",
-			label: "Seguidores",
-			target: 50,
-			current: 43,
-			source: "scaena",
+		expect(goal?.event).toBe("goal-view");
+		expect(JSON.parse(goal?.data ?? "{}")).toMatchObject({
+			kind: "one",
+			goal: { type: "follows", label: "Seguidores", target: 50, current: 43, source: "scaena" },
 		});
 	});
 });

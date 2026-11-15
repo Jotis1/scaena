@@ -18,7 +18,7 @@ export function ChattingScene({ profile, o, width }: { profile: Profile; o: Scen
 				width={width}
 				status={<LiveStatusPill channel={channel} viewers={o.viewers} />}
 				alerts={<LiveAlerts message={o.message} durationMs={7000} />}
-				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} /> : null}
+				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} animate={o.animate} /> : null}
 				events={
 					o.events ? <LiveEvents rows={o.rows ?? SCENE_ROWS.chatting} animate width={400} /> : null
 				}

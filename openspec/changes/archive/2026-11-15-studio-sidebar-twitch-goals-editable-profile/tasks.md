@@ -110,4 +110,4 @@
 - [x] 8.1 Actualizar los e2e de navegación del estudio (barra lateral, menú en el móvil y que no haya otra barra horizontal) y de la cabecera pública («Estudio» y menú de la cuenta), con axe sin fallos en las páginas tocadas.
 - [x] 8.2 Pasar `bun run lint`, `check:colors`, `tsc`, las pruebas unitarias, los e2e en serie con la base de datos de Docker y `openspec validate --strict`.
 - [x] 8.3 Subir la versión a 0.3.0 en `package.json`, abrir la PR, mergear en `main` y crear y subir la etiqueta anotada `v0.3.0`.
-- [ ] 8.4 Después del despliegue, avisar de que hay que volver a entrar con Twitch y pulsar «Conectar eventos» para las metas.
+- [x] 8.4 Después del despliegue, avisar de que hay que volver a entrar con Twitch y pulsar «Conectar eventos» para las metas.

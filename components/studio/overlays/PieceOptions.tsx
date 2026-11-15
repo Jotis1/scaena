@@ -1,11 +1,9 @@
 "use client";
 
-import { Alert, Input, Select, Toggle } from "@jotis-me/react";
+import { Input, Select, Toggle } from "@jotis-me/react";
 import type { AlertPhrases } from "@/lib/alerts/phrase";
-import type { GoalState } from "@/lib/alerts/saved-goal";
 import type { SourceOptions } from "@/lib/studio/overlay-urls";
 import type { AlertType } from "@/lib/twitch/eventsub/event";
-import { GoalEditor } from "./GoalEditor";
 import { PhraseEditor } from "./PhraseEditor";
 
 // Opciones de cada pieza (specs/obs-overlays, «Página de URLs para copiar» y «Opciones de cada pieza en las escenas»).
@@ -118,40 +116,6 @@ export function CameraOptions({
 					onChange={(e) => set({ name: e.target.value })}
 				/>
 			</div>
-		</div>
-	);
-}
-
-/**
- * La meta: con una meta de Twitch activa, se dice que sale esa y que se cambia en Twitch; la de Scaena se sigue
- * editando debajo, para cuando no haya ninguna (specs/obs-overlays, «Meta de Twitch»).
- */
-export function GoalOptions({
-	goal,
-	twitchGoal,
-	onSaved,
-	onDraft,
-}: {
-	goal: GoalState | null;
-	twitchGoal: GoalState | null;
-	onSaved: (g: GoalState) => void;
-	onDraft: (g: GoalState) => void;
-}) {
-	return (
-		<div className="flex flex-col gap-5">
-			{twitchGoal ? (
-				<Alert
-					color="brand"
-					title="Ahora sale tu meta de Twitch"
-					description={`«${twitchGoal.label}», ${twitchGoal.current} de ${twitchGoal.target}. Se cambia en el panel de creador de Twitch; la de aquí vuelve cuando la de Twitch acabe.`}
-				/>
-			) : null}
-			<GoalEditor
-				goal={goal}
-				onSaved={onSaved}
-				onDraft={onDraft}
-				hint={twitchGoal ? "Se usa cuando no hay meta en Twitch." : undefined}
-			/>
 		</div>
 	);
 }

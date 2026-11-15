@@ -11,6 +11,10 @@ const PARTS: ChannelKeyPart[] = [
 	"eventsub",
 	"token",
 	"settings",
+	"goal",
+	"twitch-goal",
+	"goal-done",
+	"twitch-goals",
 ];
 
 describe("claves de Redis", () => {
@@ -39,5 +43,13 @@ describe("claves de Redis", () => {
 		for (const k of [keys.appToken(), keys.eventsubSeen("abc"), keys.idFromLogin("Jotis_1")])
 			expect(k.startsWith("channel:")).toBe(false);
 		expect(keys.idFromLogin("Jotis_1")).toBe("app:twitch:login:jotis_1");
+	});
+
+	it("la cuenta de cada meta va bajo su canal y solo acepta ids de meta válidos", () => {
+		expect(keys.goalCount("1", "ab12cd34")).toBe("channel:1:goal:ab12cd34");
+		expect(keys.goalCount("1", "ab12cd34")).not.toBe(keys.goalCount("1", "zz12cd34"));
+		expect(() => keys.goalCount("1", "x:events")).toThrow(/meta no válido/);
+		expect(() => keys.goalCount("1", "AB12CD34")).toThrow();
+		expect(() => keys.goalCount("jotis_1", "ab12cd34")).toThrow(/id numérico/);
 	});
 });

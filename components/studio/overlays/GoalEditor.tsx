@@ -4,36 +4,45 @@ import { Button, Input, NumberInput, Select } from "@jotis-me/react";
 import { Check } from "@untitledui/icons";
 import { useState } from "react";
 import { GOAL_LABELS, type GoalType } from "@/lib/alerts/goal";
+import type { GoalOverview } from "@/lib/alerts/goal-view";
 import type { GoalState } from "@/lib/alerts/saved-goal";
 
-/** Meta que se enseña mientras no hay ninguna guardada. */
-export const DEFAULT_GOAL: GoalState = { type: "subs", label: GOAL_LABELS.subs, target: 100, current: 0 };
+/** Meta que se enseña mientras no hay ninguna guardada, y con la que empieza una nueva. */
+export const DEFAULT_GOAL: GoalState = {
+	ref: "scaena:nueva000",
+	source: "scaena",
+	type: "subs",
+	label: GOAL_LABELS.subs,
+	target: 100,
+	current: 0,
+};
+
+/** Lo que devuelve guardar: la meta y todo el panel de metas al día. */
+export type GoalSaved = GoalOverview & { goal: GoalState };
 
 type Field = "type" | "label" | "target" | "current";
 
 /**
- * La meta del canal, dentro de la tarjeta «Meta» (specs/obs-overlays, «Meta editable en el estudio»). Se guarda en
- * Scaena y llega en directo a la pieza y a las escenas: no hay que volver a pegar la URL. «Llevas» solo se manda si
- * se cambia, para no pisar lo que haya sumado el directo mientras tanto.
+ * Una meta de Scaena (specs/obs-overlays, «Meta editable en el estudio»). Con `goal`, edita esa; sin él, crea una.
+ * Se guarda en Scaena y llega en directo a la pieza y a las escenas: no hay que volver a pegar la URL. «Llevas» solo
+ * se manda si se cambia, para no pisar lo que haya sumado el directo mientras tanto.
  */
 export function GoalEditor({
 	goal,
 	onSaved,
 	onDraft,
-	hint,
 }: {
 	goal: GoalState | null;
-	onSaved: (g: GoalState) => void;
+	onSaved: (r: GoalSaved) => void;
 	/** Para la vista previa, mientras se escribe. */
 	onDraft: (g: GoalState) => void;
-	/** Una frase delante de la explicación, como «Se usa cuando no hay meta en Twitch.». */
-	hint?: string;
 }) {
 	const loaded = goal ?? DEFAULT_GOAL;
 	const [draft, setDraftState] = useState(loaded);
 	const [base, setBase] = useState(loaded.current);
 	const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
 	const [status, setStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+	const [failure, setFailure] = useState<string | null>(null);
 	const setDraft = (patch: Partial<GoalState>) => {
 		const next = { ...draft, ...patch };
 		setDraftState(next);
@@ -43,23 +52,36 @@ export function GoalEditor({
 
 	const save = async () => {
 		setStatus("saving");
-		const { current, ...config } = draft;
+		const { current, type, label, target, unit } = draft;
+		const id = goal ? goal.ref.replace(/^scaena:/, "") : undefined;
 		const res = await fetch("/api/studio/settings", {
 			method: "PUT",
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ goal: config, ...(current !== base || !goal ? { current } : {}) }),
+			body: JSON.stringify({
+				goal: { ...(id ? { id } : {}), type, label, target, ...(unit ? { unit } : {}) },
+				...(current !== base || !goal ? { current } : {}),
+			}),
 		}).catch(() => null);
 		if (res?.ok) {
-			const body = (await res.json()) as { goal: GoalState };
+			const body = (await res.json()) as GoalSaved;
 			setErrors({});
-			setDraftState(body.goal);
-			setBase(body.goal.current);
-			onSaved(body.goal);
 			setStatus("saved");
+			if (goal) {
+				setDraftState(body.goal);
+				setBase(body.goal.current);
+			} else {
+				// Era una meta nueva: el editor vuelve a quedar en blanco para la siguiente.
+				setDraftState(DEFAULT_GOAL);
+				setBase(0);
+			}
+			onSaved(body);
 			return;
 		}
-		const body = res ? ((await res.json().catch(() => ({}))) as { fields?: Record<string, string> }) : {};
+		const body = res
+			? ((await res.json().catch(() => ({}))) as { fields?: Record<string, string>; error?: string })
+			: {};
 		setErrors(body.fields ?? {});
+		setFailure(body.fields?.goal ?? null);
 		setStatus("failed");
 	};
 
@@ -115,9 +137,8 @@ export function GoalEditor({
 				</div>
 			</div>
 			<p className="text-sm text-tertiary">
-				{hint ? `${hint} ` : null}Es la misma meta en todas partes: la usan la pieza de meta y las
-				escenas de juego y Just Chatting. Al guardar llega en directo, sin tocar OBS. Cambiar el texto
-				o el objetivo no toca la cuenta; «Llevas» la corrige.
+				Al guardar llega en directo, sin tocar OBS. Cambiar el texto o el objetivo no toca la cuenta;
+				«Llevas» la corrige.
 			</p>
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-3">
 				<Button
@@ -127,13 +148,15 @@ export function GoalEditor({
 					loading={status === "saving"}
 					onClick={save}
 				>
-					Guardar meta
+					{goal ? "Guardar meta" : "Añadir meta"}
 				</Button>
 				<p role="status" className="text-sm text-tertiary">
 					{status === "saved"
-						? "Guardada. La pieza y las escenas ya la enseñan."
+						? goal
+							? "Guardada. La pieza y las escenas ya la enseñan."
+							: "Añadida. Ya puedes elegirla en «Qué meta sale»."
 						: status === "failed"
-							? "La meta no se ha guardado: mira el mensaje debajo de cada campo."
+							? (failure ?? "La meta no se ha guardado: mira el mensaje debajo de cada campo.")
 							: ""}
 				</p>
 			</div>

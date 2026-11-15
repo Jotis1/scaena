@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { GOAL_EVENT, readGoal, saveGoal } from "../../alerts/saved-goal";
+import { GOAL_VIEW_EVENT } from "../../alerts/goal-view";
+import { readGoalSettings, readGoals, saveGoal, saveShow, twitchRef } from "../../alerts/saved-goal";
+import { readTwitchGoals } from "../../alerts/twitch-goal";
 import { keys } from "../../redis/keys";
 import { memoryStore } from "../../storage/memory";
 import * as F from "./fixtures";
@@ -114,57 +116,96 @@ describe("webhook de EventSub", () => {
 		);
 	});
 
-	describe("meta guardada", () => {
+	describe("metas de Scaena", () => {
 		const SUBS = { type: "subs", label: "Subs del mes", target: 300 };
-		const goals = async () => (await events()).filter((e) => e.fields.type === GOAL_EVENT);
+		const views = async () =>
+			(await events())
+				.filter((e) => e.fields.type === GOAL_VIEW_EVENT)
+				.map((e) => JSON.parse(e.fields.data ?? "{}"));
 
 		it("5 subs regaladas con la meta de subs en 284 la dejan en 289 y avisan a los overlays", async () => {
 			await saveGoal(store, "1337", { goal: SUBS, current: 284 });
 			expect((await request(F.GIFT)).status).toBe(204);
-			expect((await readGoal(store, "1337"))?.current).toBe(289);
-			expect(JSON.parse((await goals()).at(-1)?.fields.data ?? "{}")).toMatchObject({ current: 289 });
+			expect((await readGoals(store, "1337"))[0]?.current).toBe(289);
+			expect((await views()).at(-1)).toMatchObject({ kind: "one", goal: { current: 289 } });
 		});
 
 		it("el mismo mensaje repetido por Twitch no vuelve a sumar", async () => {
 			await saveGoal(store, "1337", { goal: SUBS, current: 284 });
 			await request(F.GIFT, { id: "repetido" });
 			await request(F.GIFT, { id: "repetido" });
-			expect((await readGoal(store, "1337"))?.current).toBe(289);
+			expect((await readGoals(store, "1337"))[0]?.current).toBe(289);
 		});
 
-		it("un follow no mueve la meta de subs", async () => {
+		it("un follow no mueve la meta de subs ni avisa", async () => {
 			await saveGoal(store, "1337", { goal: SUBS, current: 284 });
-			const before = (await goals()).length;
+			const before = (await views()).length;
 			await request(F.FOLLOW);
-			expect((await readGoal(store, "1337"))?.current).toBe(284);
-			expect((await goals()).length).toBe(before);
+			expect((await readGoals(store, "1337"))[0]?.current).toBe(284);
+			expect((await views()).length).toBe(before);
 		});
 	});
 
-	// specs/twitch-events, «Seguimiento de la meta de Twitch».
-	describe("meta de Twitch", () => {
-		const goalEvents = async () =>
+	// specs/twitch-events, «Seguimiento de la meta de Twitch»; specs/obs-overlays, «Meta de Twitch».
+	describe("metas de Twitch", () => {
+		const views = async () =>
 			(await events())
-				.filter((e) => e.fields.type === GOAL_EVENT)
+				.filter((e) => e.fields.type === GOAL_VIEW_EVENT)
 				.map((e) => JSON.parse(e.fields.data ?? "{}"));
+		const SUBS = { type: "subs", label: "Meta de subs", target: 300 };
+		const OTHER = { ...F.GOAL_BEGIN, event: { ...F.GOAL_BEGIN.event, id: "subs-1" } };
+		const OTHER_PROGRESS = { ...F.GOAL_PROGRESS, event: { ...OTHER.event, current_amount: 11 } };
 
-		it("el progreso de una meta de Twitch llega a los overlays con su cifra absoluta", async () => {
+		it("sin elegirla, la meta de Twitch no sale: sigue la de Scaena", async () => {
+			await saveGoal(store, "1337", { goal: SUBS, current: 12 });
 			expect((await request(F.GOAL_PROGRESS)).status).toBe(204);
-			expect((await goalEvents()).at(-1)).toMatchObject({
-				source: "twitch",
-				current: 950,
-				target: 1000,
+			expect((await views()).at(-1)).toMatchObject({
+				kind: "one",
+				goal: { source: "scaena", current: 12 },
 			});
 		});
 
-		it("al acabar, vuelve la meta de Scaena", async () => {
-			await saveGoal(store, "1337", {
-				goal: { type: "subs", label: "Meta de subs", target: 300 },
-				current: 12,
-			});
+		it("elegida, su progreso llega a los overlays con su cifra absoluta", async () => {
+			await saveGoal(store, "1337", { goal: SUBS });
 			await request(F.GOAL_PROGRESS);
+			await saveShow(store, "1337", { kind: "one", ref: twitchRef("12345-abc-678-defgh") }, [
+				"12345-abc-678-defgh",
+			]);
+			await request({ ...F.GOAL_PROGRESS, event: { ...F.GOAL_PROGRESS.event, current_amount: 951 } });
+			expect((await views()).at(-1)).toMatchObject({
+				kind: "one",
+				goal: { source: "twitch", current: 951, target: 1000 },
+			});
+		});
+
+		it("dos metas: el progreso de la otra no cambia la que sale, y acabar la otra tampoco", async () => {
+			await saveGoal(store, "1337", { goal: SUBS });
+			await request(F.GOAL_PROGRESS);
+			await request(OTHER);
+			const ids = ["12345-abc-678-defgh", "subs-1"];
+			await saveShow(store, "1337", { kind: "one", ref: twitchRef(ids[0] as string) }, ids);
+			await request(OTHER_PROGRESS);
+			expect((await views()).at(-1)).toMatchObject({
+				goal: { label: "Hacia los 1.000", current: 950 },
+			});
+			expect((await readTwitchGoals(store, "1337")).find((g) => g.id === "subs-1")?.current).toBe(11);
+			await request({ ...F.GOAL_END, event: { ...OTHER.event, is_achieved: false } });
+			expect((await views()).at(-1)).toMatchObject({ goal: { label: "Hacia los 1.000" } });
+			expect((await readTwitchGoals(store, "1337")).map((g) => g.id)).toEqual(["12345-abc-678-defgh"]);
+		});
+
+		it("al acabar la elegida, vuelve la meta de Scaena por defecto y queda el aviso", async () => {
+			await saveGoal(store, "1337", { goal: SUBS, current: 12 });
+			await request(F.GOAL_PROGRESS);
+			await saveShow(store, "1337", { kind: "one", ref: twitchRef("12345-abc-678-defgh") }, [
+				"12345-abc-678-defgh",
+			]);
 			await request(F.GOAL_END);
-			expect((await goalEvents()).at(-1)).toMatchObject({ source: "scaena", current: 12 });
+			expect((await views()).at(-1)).toMatchObject({
+				kind: "one",
+				goal: { source: "scaena", current: 12 },
+			});
+			expect((await readGoalSettings(store, "1337")).endedTwitch).toBe("Hacia los 1.000");
 		});
 	});
 });

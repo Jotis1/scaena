@@ -1,13 +1,8 @@
-// Meta activa del canal, pedida a Twitch con el token del dueño (specs/twitch-events, «Seguimiento de la meta de
+// Metas activas del canal, pedidas a Twitch con el token del dueño (specs/twitch-events, «Seguimiento de la meta de
 // Twitch»): al conectar los eventos y al abrir Overlays, para no esperar al siguiente aviso de EventSub.
 // https://dev.twitch.tv/docs/api/reference/#get-creator-goals (pide `channel:read:goals`).
-import {
-	clearTwitchGoal,
-	latestGoal,
-	parseTwitchGoal,
-	saveTwitchGoal,
-	type TwitchGoal,
-} from "../alerts/twitch-goal";
+import { publishGoalView } from "../alerts/goal-view";
+import { parseTwitchGoal, replaceTwitchGoals, type TwitchGoal } from "../alerts/twitch-goal";
 import type { Store } from "../storage/types";
 import { HELIX_URL } from "./helix";
 
@@ -21,13 +16,11 @@ export interface GoalSyncDeps {
 }
 
 /**
- * Pregunta a Twitch la meta activa y la guarda (o la borra si no hay ninguna). Si Twitch no contesta a tiempo o da
- * error, se queda la que había: devuelve `undefined`. Si no, la meta que queda (`null` sin ninguna).
+ * Pregunta a Twitch las metas activas y sustituye las guardadas: las que ya no están cuentan como terminadas. Si
+ * Twitch no contesta a tiempo o da error, se quedan las que había: devuelve `undefined`. Si no, las que quedan.
+ * Avisa a los overlays con la vista al día.
  */
-export async function syncTwitchGoal(
-	d: GoalSyncDeps,
-	channelId: string,
-): Promise<TwitchGoal | null | undefined> {
+export async function syncTwitchGoals(d: GoalSyncDeps, channelId: string): Promise<TwitchGoal[] | undefined> {
 	try {
 		const token = await d.userToken();
 		if (!token) return undefined;
@@ -39,16 +32,16 @@ export async function syncTwitchGoal(
 			},
 		);
 		if (!res.ok) {
-			console.warn(`Meta de Twitch: Helix ha contestado ${res.status}; se queda la que había.`);
+			console.warn(`Metas de Twitch: Helix ha contestado ${res.status}; se quedan las que había.`);
 			return undefined;
 		}
 		const { data } = (await res.json()) as { data?: Record<string, unknown>[] };
-		const goal = latestGoal((data ?? []).map(parseTwitchGoal).filter((g): g is TwitchGoal => g !== null));
-		if (goal) await saveTwitchGoal(d.store, channelId, goal);
-		else await clearTwitchGoal(d.store, channelId);
-		return goal;
+		const goals = (data ?? []).map(parseTwitchGoal).filter((g): g is TwitchGoal => g !== null);
+		await replaceTwitchGoals(d.store, channelId, goals);
+		await publishGoalView(d.store, channelId);
+		return goals;
 	} catch (e) {
-		console.warn(`Meta de Twitch: no se ha podido preguntar (${e instanceof Error ? e.message : e}).`);
+		console.warn(`Metas de Twitch: no se ha podido preguntar (${e instanceof Error ? e.message : e}).`);
 		return undefined;
 	}
 }
