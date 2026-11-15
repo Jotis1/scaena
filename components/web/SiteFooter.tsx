@@ -1,5 +1,5 @@
 import { Footer } from "@jotis-me/react";
-import { getMainProfile } from "@/lib/profile";
+import { loadMainProfile } from "@/lib/profile";
 import { linkedSocials, SOCIAL_NAMES } from "@/lib/profile/socials";
 import { ScaenaBrand } from "./ScaenaBrand";
 
@@ -7,8 +7,8 @@ import { ScaenaBrand } from "./ScaenaBrand";
  * Pie de la web con el `Footer` de Regula (diseño: «Portada» y «Vídeos»): la marca, la línea del perfil, «El canal»
  * y «Esta web». Las redes sin enlace (Discord sin invitación) no salen (specs/channel-profile, «Enlaces opcionales»).
  */
-export function SiteFooter() {
-	const profile = getMainProfile();
+export async function SiteFooter() {
+	const profile = await loadMainProfile();
 	return (
 		<Footer
 			type="large-02"

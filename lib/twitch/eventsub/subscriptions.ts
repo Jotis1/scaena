@@ -87,7 +87,7 @@ function stateOf(status: string): SubscriptionState {
 	return "revoked";
 }
 
-/** Estado de las ocho suscripciones, de Twitch y, si Twitch ya la ha borrado, de la revocación guardada. */
+/** Estado de las suscripciones de `SUBSCRIPTIONS`, de Twitch y, si Twitch ya la ha borrado, de la revocación guardada. */
 export async function connectionStatus(d: EventSubDeps, channelId: string): Promise<ConnectionStatus> {
 	const [own, revocations] = await Promise.all([
 		listOwn(d, channelId),

@@ -9,7 +9,7 @@ const EVERY_DAY = "Todos los días";
 const list = new Intl.ListFormat("es-ES", { style: "long", type: "conjunction" });
 
 /** Nombre del día en castellano, tal como se muestra. */
-const DAY_NAMES: Record<Day, string> = {
+export const DAY_NAMES: Record<Day, string> = {
 	monday: "lunes",
 	tuesday: "martes",
 	wednesday: "miércoles",

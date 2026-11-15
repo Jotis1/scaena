@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskToken, sourceUrl } from "./overlay-urls";
+import { maskToken, sourceUrl, splitOrigin } from "./overlay-urls";
 
 const C = {
 	origin: "https://scaena.jotis.me",
@@ -74,6 +74,31 @@ describe("URL de las fuentes", () => {
 		);
 		// Antes del token, que va siempre al final.
 		expect(sourceUrl("scene/game", { canvas: "3440x1440" }, C)).toMatch(/canvas=3440x1440&token=/);
+	});
+
+	// specs/obs-overlays, «Opciones de cada pieza en las escenas».
+	it("escenas montadas: las opciones de cada pieza, solo si no son las de por defecto", () => {
+		const game = (o: Parameters<typeof sourceUrl>[1]) =>
+			new URL(sourceUrl("scene/game", o, C)).searchParams;
+		const base = game({ rows: 4, animate: true, message: true, viewers: false });
+		for (const k of ["rows", "animate", "message", "viewers", "name"]) expect(base.has(k), k).toBe(false);
+		const q = game({ rows: 3, animate: false, message: false, viewers: true, name: "Jotis" });
+		expect(q.get("rows")).toBe("3");
+		expect(q.get("animate")).toBe("0");
+		expect(q.get("message")).toBe("0");
+		expect(q.get("viewers")).toBe("1");
+		expect(q.get("name")).toBe("Jotis");
+		const chatting = new URL(sourceUrl("scene/chatting", { rows: 4, viewers: true }, C)).searchParams;
+		expect(chatting.get("rows")).toBe("4");
+		expect(chatting.get("viewers")).toBe("1");
+	});
+
+	it("la URL se parte en el origen y el resto, para el campo con prefijo", () => {
+		expect(splitOrigin(sourceUrl("chat", {}, C), C.origin)).toEqual({
+			origin: "https://scaena.jotis.me",
+			rest: "/overlay/jotis_1/chat",
+		});
+		expect(splitOrigin("/otra", C.origin)).toEqual({ origin: "", rest: "/otra" });
 	});
 
 	it("el token se enseña tapado", () => {

@@ -1,5 +1,5 @@
 import { channelIdOf } from "@/lib/channel";
-import { getMainProfile } from "@/lib/profile";
+import { repoProfile } from "@/lib/profile";
 import { helixDeps } from "@/lib/twitch/server";
 import { getStatus } from "@/lib/twitch/status";
 import { handleStatus } from "@/lib/twitch/status-handler";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
 	return handleStatus(request, {
-		defaultLogin: getMainProfile().twitch.login,
+		defaultLogin: repoProfile().twitch.login,
 		status: async (login) => {
 			let id: string | null;
 			try {

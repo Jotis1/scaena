@@ -7,6 +7,7 @@ import {
 	activeProgress,
 	connectionView,
 	eventsNotice,
+	missingScopes,
 	revokedNotice,
 	SCOPE_DESCRIPTIONS,
 	SUBSCRIPTION_FEEDS,
@@ -20,16 +21,16 @@ describe("textos de la conexión", () => {
 		expect(connectionView(SUBSCRIPTIONS.map(({ type }) => ({ type, state: "missing" })))).toBe("none");
 	});
 
-	it("con todas activas, «conectado» y 8 de 8", () => {
+	it("con todas activas, «conectado» y 11 de 11", () => {
 		expect(connectionView(rows())).toBe("connected");
-		expect(activeCount(rows())).toBe("8 de 8 activas");
+		expect(activeCount(rows())).toBe("11 de 11 activas");
 		expect(revokedNotice(rows())).toBeNull();
 	});
 
 	it("una raid revocada da el aviso del diseño", () => {
 		const r = rows({ "channel.raid": { state: "revoked", reason: "notification_failures_exceeded" } });
 		expect(connectionView(r)).toBe("revoked");
-		expect(activeCount(r)).toBe("7 de 8 activas");
+		expect(activeCount(r)).toBe("10 de 11 activas");
 		expect(revokedNotice(r)).toEqual({
 			title: "Twitch ha revocado una suscripción",
 			description:
@@ -77,7 +78,7 @@ describe("aviso de eventos en el resto del estudio", () => {
 });
 
 describe("cuenta de la conexión", () => {
-	it("activas sobre el total, para la barra: 5 de 8 es el 62,5 %", () => {
+	it("activas sobre el total, para la barra: 8 de 11", () => {
 		const p = activeProgress(
 			rows({
 				"channel.subscription.gift": { state: "pending" },
@@ -85,7 +86,7 @@ describe("cuenta de la conexión", () => {
 				"stream.offline": { state: "missing" },
 			}),
 		);
-		expect(p).toEqual({ active: 5, total: 8, percent: 62.5 });
+		expect(p).toEqual({ active: 8, total: 11, percent: (8 / 11) * 100 });
 	});
 
 	it("cada suscripción dice a qué alimenta, y cada permiso qué deja ver", () => {
@@ -93,5 +94,13 @@ describe("cuenta de la conexión", () => {
 		expect(SUBSCRIPTION_FEEDS["channel.raid"]).toBe("Alertas y eventos");
 		expect(SUBSCRIPTION_FEEDS["stream.online"]).toBe("Estado");
 		for (const scope of TWITCH_SCOPES) expect(SCOPE_DESCRIPTIONS[scope], scope).toBeTruthy();
+	});
+
+	// specs/twitch-events, «Conexión del canal», «Falta el permiso de metas».
+	it("una sesión de antes de pedir las metas: falta `channel:read:goals`", () => {
+		const before = ["moderator:read:followers", "channel:read:subscriptions", "bits:read"];
+		expect(missingScopes(before, TWITCH_SCOPES)).toEqual(["channel:read:goals"]);
+		expect(missingScopes(TWITCH_SCOPES, TWITCH_SCOPES)).toEqual([]);
+		expect(SCOPE_DESCRIPTIONS["channel:read:goals"]).toBeTruthy();
 	});
 });

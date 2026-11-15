@@ -8,6 +8,7 @@ import type { Store } from "../storage/types";
 import type { AlertEvent } from "../twitch/eventsub/event";
 import { type GoalType, goalIncrement } from "./goal";
 import { type AlertSettings, readSettings, SettingsError, settingsSchema } from "./settings";
+import { readTwitchGoal, twitchGoalState } from "./twitch-goal";
 
 /** Nombre del evento SSE con la meta y su cuenta. */
 export const GOAL_EVENT = "goal";
@@ -17,6 +18,8 @@ export type GoalConfig = NonNullable<AlertSettings["goal"]>;
 /** Lo que pinta un overlay: la meta y lo que se lleva. */
 export interface GoalState extends GoalConfig {
 	current: number;
+	/** De dónde sale: la meta de Twitch manda sobre la de Scaena (specs/obs-overlays, «Meta de Twitch»). */
+	source?: "twitch" | "scaena";
 }
 
 export async function readGoal(store: Store, channelId: string): Promise<GoalState | null> {
@@ -24,11 +27,23 @@ export async function readGoal(store: Store, channelId: string): Promise<GoalSta
 	if (!goal) return null;
 	const raw = await store.get<unknown>(keys.channel(channelId, "goal"));
 	const current = Number(raw ?? 0);
-	return { ...goal, current: Number.isFinite(current) && current > 0 ? Math.floor(current) : 0 };
+	return {
+		...goal,
+		current: Number.isFinite(current) && current > 0 ? Math.floor(current) : 0,
+		source: "scaena",
+	};
 }
 
-async function publish(store: Store, channelId: string, g: GoalState): Promise<void> {
-	await store.xadd(keys.channel(channelId, "events"), { type: GOAL_EVENT, data: JSON.stringify(g) });
+/** Avisa a los overlays con la meta que se ve: la de Twitch si la hay; si no, la de Scaena. */
+export async function publishGoal(store: Store, channelId: string): Promise<void> {
+	const g = await resolveGoal(store, channelId);
+	if (g) await store.xadd(keys.channel(channelId, "events"), { type: GOAL_EVENT, data: JSON.stringify(g) });
+}
+
+/** La meta que se ve: la activa en Twitch si la hay; si no, la guardada en Scaena; `null` sin ninguna. */
+export async function resolveGoal(store: Store, channelId: string): Promise<GoalState | null> {
+	const twitch = await readTwitchGoal(store, channelId);
+	return twitch ? twitchGoalState(twitch) : readGoal(store, channelId);
 }
 
 /**
@@ -51,7 +66,8 @@ export async function saveGoal(store: Store, channelId: string, input: unknown):
 	await store.set(keys.channel(channelId, "settings"), r.data);
 	if (typeof current === "number") await store.set(keys.channel(channelId, "goal"), current);
 	const state = (await readGoal(store, channelId)) as GoalState;
-	await publish(store, channelId, state);
+	// Con una meta de Twitch activa, lo que se ve no cambia: se publica la resuelta.
+	await publishGoal(store, channelId);
 	return state;
 }
 
@@ -65,7 +81,12 @@ export async function countGoalEvent(store: Store, e: AlertEvent): Promise<GoalS
 	const n = goalIncrement(goal.type as GoalType, e);
 	if (!n) return null;
 	const current = await store.incrby(keys.channel(e.channelId, "goal"), n);
-	const state = { ...goal, current };
-	await publish(store, e.channelId, state);
+	const state: GoalState = { ...goal, current, source: "scaena" };
+	// La cuenta sigue al día aunque mande la meta de Twitch; solo se publica si es la que se ve.
+	if (!(await readTwitchGoal(store, e.channelId)))
+		await store.xadd(keys.channel(e.channelId, "events"), {
+			type: GOAL_EVENT,
+			data: JSON.stringify(state),
+		});
 	return state;
 }

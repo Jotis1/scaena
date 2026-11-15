@@ -1,6 +1,7 @@
 // Webhook de EventSub (specs/twitch-events; design.md, decisión 3). Separado de la ruta para probarlo con el
 // almacén en memoria.
-import { countGoalEvent } from "../../alerts/saved-goal";
+import { countGoalEvent, publishGoal } from "../../alerts/saved-goal";
+import { clearTwitchGoal, saveTwitchGoal } from "../../alerts/twitch-goal";
 import { keys } from "../../redis/keys";
 import type { Store } from "../../storage/types";
 import { type Notification, normalize } from "./normalize";
@@ -84,6 +85,12 @@ export async function handleWebhook(headers: Headers, body: string, ctx: Webhook
 		} catch (e) {
 			console.error("No se ha podido sumar el evento a la meta:", e);
 		}
+	} else if (r.kind === "goal") {
+		// Meta de Twitch: cifras absolutas, así que un aviso repetido no suma dos veces. Al acabar se borra (solo si es
+		// la misma) y vuelve a verse la de Scaena.
+		if (r.phase === "end") await clearTwitchGoal(ctx.store, r.channelId, r.goal.id);
+		else await saveTwitchGoal(ctx.store, r.channelId, r.goal);
+		await publishGoal(ctx.store, r.channelId);
 	} else if (r.kind === "status") {
 		// Empieza o acaba el directo: la próxima consulta del estado va a Twitch (specs/live-status).
 		await ctx.store.del(keys.channel(r.channelId, "status"));

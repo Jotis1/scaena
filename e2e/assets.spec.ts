@@ -120,3 +120,68 @@ test("cada PNG se parece a la captura de Chromium del mismo nodo", async ({ page
 		expect(diff / (shot.width * shot.height), name).toBeLessThan(MAX_DIFF);
 	}
 });
+
+// specs/twitch-profile-assets, «Editar el contenido de los recursos»; specs/channel-profile, «Contenido del canal en un
+// solo sitio». Cada prueba deja el perfil como estaba.
+test.describe("contenido del canal", () => {
+	test.afterEach(async ({ page }) => {
+		await page.request.delete("/api/studio/profile");
+	});
+	const editor = (page: Page) => page.getByRole("region", { name: "Contenido del canal" });
+
+	test("cambiar la tercera norma: la vista previa la enseña al momento y, guardada, al recargar", async ({
+		page,
+	}) => {
+		await page.goto("/studio/assets");
+		await editor(page).getByRole("button", { name: "Normas", exact: true }).click();
+		await editor(page).getByRole("textbox", { name: "Norma 3" }).fill("Nada de spoilers sin aviso.");
+		const panel = page.getByRole("article", { name: "Panel Normas" });
+		await expect(panel).toContainText("3. Nada de spoilers sin aviso.");
+		await editor(page).getByRole("button", { name: "Guardar contenido" }).click();
+		await expect(editor(page).getByText(/^Guardado\./)).toBeVisible();
+		await page.reload();
+		await expect(page.getByRole("article", { name: "Panel Normas" })).toContainText(
+			"3. Nada de spoilers sin aviso.",
+		);
+	});
+
+	test("el horario guardado llega a la portada", async ({ page }) => {
+		await page.goto("/studio/assets");
+		await editor(page).getByRole("button", { name: "Horario", exact: true }).click();
+		await editor(page).getByLabel("Empieza").fill("18:00");
+		await editor(page).getByLabel("Acaba").fill("21:00");
+		await editor(page).getByRole("button", { name: "Guardar contenido" }).click();
+		await expect(editor(page).getByText(/^Guardado\./)).toBeVisible();
+		await page.goto("/");
+		await expect(page.getByText("Suele haber directo de 18:00 a 21:00.").first()).toBeVisible();
+	});
+
+	test("una norma con emoji no se guarda y el error sale en su campo", async ({ page }) => {
+		await page.goto("/studio/assets");
+		await editor(page).getByRole("button", { name: "Normas", exact: true }).click();
+		await editor(page).getByRole("textbox", { name: "Norma 1" }).fill("Buen rollo 🎉");
+		await editor(page).getByRole("button", { name: "Guardar contenido" }).click();
+		await expect(editor(page).getByText(/emoji/).first()).toBeVisible();
+		await expect(
+			editor(page).getByText("No se ha guardado: mira el mensaje debajo de cada campo."),
+		).toBeVisible();
+		const res = await page.request.put("/api/studio/profile", { data: { edits: {} } });
+		expect((await res.json()).profile.rules[0]).not.toContain("🎉");
+	});
+
+	test("volver a los valores por defecto deja el perfil del repositorio", async ({ page }) => {
+		await page.goto("/studio/assets");
+		const original = await page.getByRole("article", { name: "Panel Normas" }).textContent();
+		await editor(page).getByRole("button", { name: "Normas", exact: true }).click();
+		await editor(page).getByRole("textbox", { name: "Norma 1" }).fill("Otra norma.");
+		await editor(page).getByRole("button", { name: "Guardar contenido" }).click();
+		await expect(editor(page).getByText(/^Guardado\./)).toBeVisible();
+		await editor(page).getByRole("button", { name: "Volver a los valores por defecto" }).click();
+		await page.getByRole("dialog").getByRole("button", { name: "Volver a los de por defecto" }).click();
+		await expect(
+			editor(page).getByText("Vuelve a estar como en el perfil del repositorio."),
+		).toBeVisible();
+		await page.reload();
+		expect(await page.getByRole("article", { name: "Panel Normas" }).textContent()).toBe(original);
+	});
+});

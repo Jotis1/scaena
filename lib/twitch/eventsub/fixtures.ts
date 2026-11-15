@@ -127,3 +127,35 @@ export const ONLINE: Notification = {
 };
 
 export const OFFLINE: Notification = { subscription: sub("stream.offline"), event: { ...channel } };
+
+/** Meta de Twitch: el mismo cuerpo en begin, progress y end; end trae además `is_achieved` y `ended_at`. */
+const goal = (over: Record<string, unknown> = {}) => ({
+	id: "12345-abc-678-defgh",
+	...channel,
+	type: "follower",
+	description: "Hacia los 1.000",
+	current_amount: 950,
+	target_amount: 1000,
+	started_at: "2026-11-04T17:00:00Z",
+	...over,
+});
+
+export const GOAL_BEGIN: Notification = {
+	subscription: sub("channel.goal.begin"),
+	event: goal({ type: "subscription_count", description: "", current_amount: 0, target_amount: 50 }),
+};
+export const GOAL_PROGRESS: Notification = { subscription: sub("channel.goal.progress"), event: goal() };
+export const GOAL_END: Notification = {
+	subscription: sub("channel.goal.end"),
+	event: goal({ is_achieved: false, ended_at: "2026-11-05T17:00:00Z" }),
+};
+export const GOAL_CHEERERS: Notification = {
+	subscription: sub("channel.goal.progress"),
+	event: goal({
+		id: "cheer-1",
+		type: "new_cheerer",
+		description: "Gente que anima",
+		current_amount: 7,
+		target_amount: 20,
+	}),
+};

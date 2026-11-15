@@ -40,3 +40,10 @@ export function StudioPageHeader({
 		</div>
 	);
 }
+
+/**
+ * Marco de los `ButtonGroup` del estudio (selector de lienzo). El de Regula 0.8.1 es una sombra *interior* del
+ * `fieldset`, y el fondo opaco de los botones la tapa: el grupo se ve sin borde y el botón elegido, pegado al texto de
+ * la izquierda. Una sombra exterior no la tapa nadie. Quitar cuando Regula lo arregle.
+ */
+export const BUTTON_GROUP_FRAME = "shadow-[0_0_0_1px_var(--border-primary)]!";

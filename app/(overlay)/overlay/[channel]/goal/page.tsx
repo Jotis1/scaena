@@ -13,7 +13,7 @@ export default async function GoalOverlay({
 	params: Promise<{ channel: string }>;
 	searchParams: Promise<SearchParams>;
 }) {
-	const profile = profileForOverlay((await params).channel);
+	const profile = await profileForOverlay((await params).channel);
 	const q = await searchParams;
 	const type = oneOf(q, "type", GOAL_TYPES, "subs");
 	const unit = text(q, "unit", "", 20);

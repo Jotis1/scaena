@@ -22,7 +22,7 @@ describe("franja del aviso de eventos", () => {
 		for (const p of ["overlays", "guide", "assets"]) {
 			const src = page(p);
 			expect(src.indexOf("<EventsNotice"), p).toBeGreaterThan(0);
-			expect(src.indexOf("<EventsNotice"), p).toBeLessThan(src.indexOf("<StudioContent"));
+			expect(src.indexOf("<EventsNotice"), p).toBeLessThan(src.search(/<StudioContent|<GuideBody/));
 		}
 		expect(page("connection")).not.toContain("<EventsNotice");
 	});

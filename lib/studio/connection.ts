@@ -12,6 +12,9 @@ export const SUBSCRIPTION_LABELS: Record<SubscriptionType, string> = {
 	"channel.cheer": "Bits",
 	"stream.online": "Empieza el directo",
 	"stream.offline": "Acaba el directo",
+	"channel.goal.begin": "Empieza una meta",
+	"channel.goal.progress": "Avanza la meta",
+	"channel.goal.end": "Acaba la meta",
 };
 
 /** Lo que deja de llegar si cae cada una. */
@@ -24,6 +27,9 @@ const CONSEQUENCE: Record<SubscriptionType, string> = {
 	"channel.cheer": "Los bits no llegarán a las alertas, los eventos ni la meta",
 	"stream.online": "La web tardará hasta un minuto más en ver que empieza el directo",
 	"stream.offline": "La web tardará hasta un minuto más en ver que acaba el directo",
+	"channel.goal.begin": "Las metas nuevas de Twitch no llegarán a la meta",
+	"channel.goal.progress": "El avance de la meta de Twitch no llegará a la meta",
+	"channel.goal.end": "La meta de Twitch seguirá en pantalla al acabar",
 };
 
 /** Motivos de Twitch (`status` de la suscripción), en castellano. */
@@ -108,6 +114,9 @@ export const SUBSCRIPTION_FEEDS: Record<SubscriptionType, string> = {
 	"channel.cheer": "Alertas, eventos y meta",
 	"stream.online": "Estado",
 	"stream.offline": "Estado",
+	"channel.goal.begin": "Meta",
+	"channel.goal.progress": "Meta",
+	"channel.goal.end": "Meta",
 };
 
 /** Suscripciones activas, para la barra de la tarjeta de la cuenta. */
@@ -116,9 +125,16 @@ export function activeProgress(rows: SubscriptionRow[]): { active: number; total
 	return { active, total: rows.length, percent: rows.length ? (active / rows.length) * 100 : 0 };
 }
 
+/** Permisos que pide Scaena y que la sesión no tiene: los que se pidieron después de entrar (specs/twitch-events,
+ * «Conexión del canal»). */
+export function missingScopes(granted: readonly string[], wanted: readonly string[]): string[] {
+	return wanted.filter((s) => !granted.includes(s));
+}
+
 /** Qué deja ver cada permiso que se pide al entrar, en castellano (diseño: «Conexión - sin conectar»). */
 export const SCOPE_DESCRIPTIONS: Record<string, string> = {
 	"moderator:read:followers": "Saber quién empieza a seguir el canal",
 	"channel:read:subscriptions": "Ver subs, renovaciones y regalos",
 	"bits:read": "Ver los bits que mandan",
+	"channel:read:goals": "Ver tus metas de Twitch y cómo van",
 };

@@ -27,6 +27,7 @@ describe("al conectar", () => {
 			label: "Seguidores",
 			target: 50,
 			current: 43,
+			source: "scaena",
 		});
 	});
 });

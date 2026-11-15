@@ -7,7 +7,7 @@ import { LiveEvents } from "../LiveEvents";
 import { LiveGoal } from "../LiveGoal";
 import { LiveStatusPill } from "../LiveStatusPill";
 import { GameLayout } from "./layouts";
-import type { SceneOptions } from "./params";
+import { SCENE_ROWS, type SceneOptions } from "./params";
 
 /**
  * Escena de juego en vivo (design.md, decisión 15). Cada pieza es la misma del overlay suelto y todas comparten
@@ -19,8 +19,8 @@ export function GameScene({ profile, o, width }: { profile: Profile; o: SceneOpt
 		<ChannelEventsProvider channel={channel} token={o.token} since={o.since}>
 			<GameLayout
 				width={width}
-				status={<LiveStatusPill channel={channel} viewers={false} />}
-				alerts={<LiveAlerts message durationMs={7000} />}
+				status={<LiveStatusPill channel={channel} viewers={o.viewers} />}
+				alerts={<LiveAlerts message={o.message} durationMs={7000} />}
 				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} /> : null}
 				chat={
 					o.chat ? (
@@ -31,13 +31,15 @@ export function GameScene({ profile, o, width }: { profile: Profile; o: SceneOpt
 							height={440}
 							translucent={o.translucent}
 							fade
-							animate
+							animate={o.animate}
 						/>
 					) : null
 				}
-				events={o.events ? <LiveEvents rows={4} animate width={384} /> : null}
+				events={o.events ? <LiveEvents rows={o.rows ?? SCENE_ROWS.game} animate width={384} /> : null}
 				camera={
-					o.camera ? <CamFrame ratio="16:9" width={384} live name={profile.camera.name} /> : null
+					o.camera ? (
+						<CamFrame ratio="16:9" width={384} live name={o.cameraName ?? profile.camera.name} />
+					) : null
 				}
 			/>
 		</ChannelEventsProvider>

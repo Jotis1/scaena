@@ -23,7 +23,7 @@ export default async function SceneOverlay({
 	const { channel, variant } = await params;
 	if (!(VARIANTS as readonly string[]).includes(variant)) notFound();
 	const v = variant as Variant;
-	const profile = profileForOverlay(channel);
+	const profile = await profileForOverlay(channel);
 	const q = await searchParams;
 	const copy = profile.scenes[v];
 	const canvas = canvasOf(q);

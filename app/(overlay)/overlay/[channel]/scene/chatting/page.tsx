@@ -12,7 +12,7 @@ export default async function ChattingScenePage({
 	params: Promise<{ channel: string }>;
 	searchParams: Promise<SearchParams>;
 }) {
-	const profile = profileForOverlay((await params).channel);
+	const profile = await profileForOverlay((await params).channel);
 	const q = await searchParams;
 	// `canvas=3440x1440`: lienzo lógico de 2580×1080 escalado a 4/3 (design.md de refine-site-and-ultrawide-scenes, decisión 7).
 	const canvas = canvasOf(q);

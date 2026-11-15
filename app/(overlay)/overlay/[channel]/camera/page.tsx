@@ -12,7 +12,7 @@ export default async function CameraOverlay({
 	params: Promise<{ channel: string }>;
 	searchParams: Promise<SearchParams>;
 }) {
-	const profile = profileForOverlay((await params).channel);
+	const profile = await profileForOverlay((await params).channel);
 	const q = await searchParams;
 	const role = text(q, "role", "", 40);
 

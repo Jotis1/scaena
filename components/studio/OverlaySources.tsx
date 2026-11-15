@@ -1,14 +1,15 @@
 "use client";
 
 import {
+	Accordion,
 	Badge,
+	Button,
 	ButtonGroup,
 	CamFrame,
 	ChatBox,
 	Input,
 	NumberInput,
 	ScaledPreview,
-	Select,
 	StreamAlert,
 	StreamEvents,
 	StreamGoal,
@@ -19,9 +20,10 @@ import {
 	TransparencyGrid,
 } from "@jotis-me/react";
 import { BookOpen01, Check, Copy01 } from "@untitledui/icons";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CAMERA_HOLE, ChattingLayout, GameLayout } from "@/components/overlay/scenes/layouts";
+import { SCENE_ROWS } from "@/components/overlay/scenes/params";
 import { goalUnit } from "@/lib/alerts/goal";
 import { type AlertPhrases, fillPhrase } from "@/lib/alerts/phrase";
 import type { GoalState } from "@/lib/alerts/saved-goal";
@@ -34,13 +36,26 @@ import {
 	SCENE_IDS,
 	type SourceId,
 } from "@/lib/studio/overlay-sources";
-import { maskToken, type SourceKind, type SourceOptions, sourceUrl } from "@/lib/studio/overlay-urls";
+import {
+	maskToken,
+	type SourceKind,
+	type SourceOptions,
+	sourceUrl,
+	splitOrigin,
+} from "@/lib/studio/overlay-urls";
 import { TEST_ALERTS } from "@/lib/studio/test-alerts";
 import type { AlertType } from "@/lib/twitch/eventsub/event";
-import { DEFAULT_GOAL, GoalEditor } from "./overlays/GoalEditor";
-import { PhraseEditor } from "./overlays/PhraseEditor";
+import { DEFAULT_GOAL } from "./overlays/GoalEditor";
+import {
+	AlertOptions,
+	CameraOptions,
+	ChatOptions,
+	EventOptions,
+	GoalOptions,
+	StatusOptions,
+} from "./overlays/PieceOptions";
 import { TokenField } from "./overlays/TokenField";
-import { StudioPageHeader } from "./StudioContent";
+import { BUTTON_GROUP_FRAME, StudioPageHeader } from "./StudioContent";
 import { SAMPLE_CHAT, SAMPLE_EVENTS } from "./samples";
 
 export interface SceneCopy {
@@ -57,8 +72,10 @@ export interface OverlaySourcesProps {
 	footer: string;
 	scenes: Record<"starting" | "brb" | "ending" | "offline", SceneCopy>;
 	phrases: AlertPhrases;
-	/** La meta guardada, con su cuenta; `null` si aún no hay. */
+	/** La meta guardada en Scaena, con su cuenta; `null` si aún no hay. */
 	goal: GoalState | null;
+	/** La meta activa en Twitch, que manda sobre la de Scaena (specs/obs-overlays, «Meta de Twitch»). */
+	twitchGoal: GoalState | null;
 	/** La fuente de `?source=` (o de `?tab=scenes`). */
 	source: SourceId;
 	/** El lienzo de las escenas, de `?canvas=`. */
@@ -67,6 +84,9 @@ export interface OverlaySourcesProps {
 
 /** Ancho del escenario antes de medirlo: el del diseño a 1440 px. */
 const DEFAULT_STAGE = 962;
+
+/** Opciones de las piezas dentro de las escenas, como las de la pieza suelta. */
+const SCENE_PIECES: SourceOptions = { animate: true, message: true, viewers: false };
 
 const TOKEN_NOTE = "Lleva el token: si lo rotas, vuelve a pegarla en OBS.";
 
@@ -151,7 +171,6 @@ const ALERT_SAMPLE = Object.fromEntries(TEST_ALERTS.map((t) => [t.type, t.event]
  * layouts de verdad, no de la maqueta (design.md del cambio redesign-studio, decisión 2).
  */
 export function OverlaySources(p: OverlaySourcesProps) {
-	const router = useRouter();
 	const path = usePathname();
 	const [sel, setSel] = useState<SourceId>(p.source);
 	const [canvasId, setCanvasId] = useState<CanvasId>(p.canvas);
@@ -170,8 +189,15 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		goal: {},
 		status: { viewers: false },
 		camera: { ratio: "16:9", name: p.cameraName },
-		"scene/game": { translucent: true, camera: true, events: true, goalPiece: true },
-		"scene/chatting": { events: true, goalPiece: true },
+		"scene/game": {
+			translucent: true,
+			camera: true,
+			events: true,
+			goalPiece: true,
+			...SCENE_PIECES,
+			rows: SCENE_ROWS.game,
+		},
+		"scene/chatting": { events: true, goalPiece: true, ...SCENE_PIECES, rows: SCENE_ROWS.chatting },
 		"scene/starting": { minutes: 5 },
 		"scene/brb": { minutes: 8 },
 		"scene/ending": { next: p.footer },
@@ -190,7 +216,8 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		setCanvasId(c);
 		const q = new URLSearchParams({ source: next });
 		if (isScene(next) && c !== DEFAULT_CANVAS) q.set("canvas", c);
-		router.replace(`${path}?${q}`, { scroll: false });
+		// Sin pasar por el servidor: la página es dinámica y cada vuelta tarda (design.md, decisión 7).
+		window.history.replaceState(null, "", `${path}?${q}`);
 	};
 	const pickCanvas = (id: string) =>
 		go(sel, (CANVAS_IDS as string[]).includes(id) ? (id as CanvasId) : DEFAULT_CANVAS);
@@ -198,12 +225,13 @@ export function OverlaySources(p: OverlaySourcesProps) {
 	const def = SOURCES[sel];
 	const size = scene ? canvasLabel(canvas) : sel === "camera" ? (o.ratio ?? "16:9") : def.size;
 	const guide = `/studio/guide${canvasId === DEFAULT_CANVAS ? "" : `?canvas=${canvasId}`}#${guideAnchor(sel)}`;
+	const shown = p.twitchGoal ?? goal;
 	const goalPiece = (
 		<StreamGoal
-			label={goal.label}
-			current={goal.current}
-			goal={Math.max(1, goal.target)}
-			unit={goalUnit(goal)}
+			label={shown.label}
+			current={shown.current}
+			goal={Math.max(1, shown.target)}
+			unit={goalUnit(shown)}
 			width={400}
 		/>
 	);
@@ -252,10 +280,10 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		goal: () => (
 			<div className="w-[min(420px,100%)]">
 				<StreamGoal
-					label={goal.label}
-					current={goal.current}
-					goal={Math.max(1, goal.target)}
-					unit={goalUnit(goal)}
+					label={shown.label}
+					current={shown.current}
+					goal={Math.max(1, shown.target)}
+					unit={goalUnit(shown)}
 					width="100%"
 				/>
 			</div>
@@ -282,7 +310,14 @@ export function OverlaySources(p: OverlaySourcesProps) {
 			<ScaledPreview width={canvas.width} scale={sceneScale} box={[stage.width, 1080 * sceneScale]}>
 				<GameLayout
 					width={canvas.width}
-					status={<StreamStatus status="live" uptime="2:14:05" category="Elden Ring" />}
+					status={
+						<StreamStatus
+							status="live"
+							uptime="2:14:05"
+							category="Elden Ring"
+							viewers={o.viewers ? 1284 : undefined}
+						/>
+					}
 					alerts={
 						<StreamAlert
 							type="raid"
@@ -300,8 +335,12 @@ export function OverlaySources(p: OverlaySourcesProps) {
 							translucent={o.translucent}
 						/>
 					}
-					events={o.events ? <StreamEvents items={SAMPLE_EVENTS} max={4} width={384} /> : null}
-					camera={o.camera ? <CamFrame ratio="16:9" width={384} live name={p.cameraName} /> : null}
+					events={o.events ? <StreamEvents items={SAMPLE_EVENTS} max={o.rows} width={384} /> : null}
+					camera={
+						o.camera ? (
+							<CamFrame ratio="16:9" width={384} live name={o.name || p.cameraName} />
+						) : null
+					}
 				/>
 			</ScaledPreview>
 		),
@@ -309,18 +348,28 @@ export function OverlaySources(p: OverlaySourcesProps) {
 			<ScaledPreview width={canvas.width} scale={sceneScale} box={[stage.width, 1080 * sceneScale]}>
 				<ChattingLayout
 					width={canvas.width}
-					status={<StreamStatus status="live" uptime="0:42:10" category="Just Chatting" />}
+					status={
+						<StreamStatus
+							status="live"
+							uptime="0:42:10"
+							category="Just Chatting"
+							viewers={o.viewers ? 1284 : undefined}
+						/>
+					}
 					alerts={
 						<StreamAlert
 							type="resub"
 							user="[espectador]"
 							months={14}
 							detail={fillPhrase(phrases.resub, { type: "resub", months: 14 })}
+							message={o.message ? ALERT_SAMPLE.resub.message : undefined}
 						/>
 					}
 					goal={o.goalPiece ? goalPiece : null}
-					events={o.events ? <StreamEvents items={SAMPLE_EVENTS} max={2} width={400} /> : null}
-					camera={<CamFrame ratio="16:9" width={CAMERA_HOLE.width} live name={p.cameraName} />}
+					events={o.events ? <StreamEvents items={SAMPLE_EVENTS} max={o.rows} width={400} /> : null}
+					camera={
+						<CamFrame ratio="16:9" width={CAMERA_HOLE.width} live name={o.name || p.cameraName} />
+					}
 					chat={<ChatBox messages={SAMPLE_CHAT} width={528} height={736} />}
 				/>
 			</ScaledPreview>
@@ -353,115 +402,94 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		),
 	} as Record<SourceId, () => ReactNode>;
 
+	const alertOptions = () => (
+		<AlertOptions
+			o={o}
+			set={set}
+			phrases={phrases}
+			onSaved={(saved) => {
+				setPhrases(saved);
+				setAlertPreview((a) => ({ ...a, phrases: saved }));
+			}}
+			onPreview={(type, draft) => setAlertPreview({ type, phrases: draft })}
+		/>
+	);
+	const goalOptions = () => (
+		<GoalOptions goal={p.goal} twitchGoal={p.twitchGoal} onSaved={setGoal} onDraft={setGoal} />
+	);
+
 	const options: Record<SourceId, () => ReactNode> = {
-		chat: () => (
-			<div className="flex flex-wrap gap-x-10 gap-y-4">
-				<Toggle
-					size="sm"
-					label="Fondo translúcido"
-					hint="Deja ver el juego por detrás."
-					checked={o.translucent}
-					onChange={(v) => set({ translucent: v })}
-				/>
-				<Toggle
-					size="sm"
-					label="Animar el último mensaje"
-					hint="Entra con un fundido corto."
-					checked={o.animate}
-					onChange={(v) => set({ animate: v })}
-				/>
-			</div>
-		),
-		alerts: () => (
-			<div className="flex flex-col gap-5">
-				<Toggle
-					size="sm"
-					label="Enseñar el mensaje del espectador"
-					hint="El que escribe al renovar o al mandar bits."
-					checked={o.message}
-					onChange={(v) => set({ message: v })}
-				/>
-				<PhraseEditor
-					phrases={phrases}
-					onSaved={(saved) => {
-						setPhrases(saved);
-						setAlertPreview((a) => ({ ...a, phrases: saved }));
-					}}
-					onPreview={(type, draft) => setAlertPreview({ type, phrases: draft })}
-				/>
-			</div>
-		),
-		events: () => (
-			<div className="w-45">
-				<Select
-					label="Filas visibles"
-					size="sm"
-					value={String(o.rows)}
-					onChange={(v) => set({ rows: Number(v) })}
-					options={["3", "4", "5", "6", "7"].map((v) => ({ value: v, label: v }))}
-				/>
-			</div>
-		),
-		goal: () => <GoalEditor goal={p.goal} onSaved={setGoal} onDraft={setGoal} />,
-		status: () => (
-			<Toggle
-				size="sm"
-				label="Enseñar espectadores"
-				hint="El número, al lado del tiempo en emisión."
-				checked={o.viewers}
-				onChange={(v) => set({ viewers: v })}
+		chat: () => <ChatOptions o={o} set={set} />,
+		alerts: alertOptions,
+		events: () => <EventOptions o={o} set={set} />,
+		goal: goalOptions,
+		status: () => <StatusOptions o={o} set={set} />,
+		camera: () => <CameraOptions o={o} set={set} defaultName={p.cameraName} />,
+		game: () => (
+			<ScenePieces
+				pieces={[
+					{
+						id: "goal",
+						title: "Meta",
+						on: o.goalPiece,
+						toggle: (v) => set({ goalPiece: v }),
+						body: goalOptions,
+					},
+					{ id: "status", title: "Estado", body: () => <StatusOptions o={o} set={set} /> },
+					{ id: "alerts", title: "Alertas", body: alertOptions },
+					{ id: "chat", title: "Chat", body: () => <ChatOptions o={o} set={set} /> },
+					{
+						id: "events",
+						title: "Eventos",
+						on: o.events,
+						toggle: (v) => set({ events: v }),
+						body: () => <EventOptions o={o} set={set} />,
+					},
+					{
+						id: "camera",
+						title: "Cámara",
+						on: o.camera,
+						toggle: (v) => set({ camera: v }),
+						body: () => (
+							<CameraOptions o={o} set={set} defaultName={p.cameraName} ratio={false} />
+						),
+					},
+				]}
 			/>
 		),
-		camera: () => (
-			<div className="flex flex-wrap gap-4">
-				<div className="flex-[0_1_160px]">
-					<Select
-						label="Proporción"
-						size="sm"
-						value={o.ratio}
-						onChange={(v) => set({ ratio: v })}
-						options={["16:9", "4:3", "1:1"].map((v) => ({ value: v, label: v }))}
-					/>
-				</div>
-				<div className="flex-[0_1_260px]">
-					<Input
-						label="Nombre"
-						size="sm"
-						maxLength={40}
-						value={o.name}
-						onChange={(e) => set({ name: e.target.value })}
-					/>
-				</div>
-			</div>
-		),
-		game: () => (
-			<ScenePieces note="Apaga la pieza que no quieras en la escena. El estado, las alertas y el chat van siempre.">
-				<Toggle size="sm" label="Cámara" checked={o.camera} onChange={(v) => set({ camera: v })} />
-				<Toggle size="sm" label="Eventos" checked={o.events} onChange={(v) => set({ events: v })} />
-				<Toggle
-					size="sm"
-					label="Meta"
-					checked={o.goalPiece}
-					onChange={(v) => set({ goalPiece: v })}
-				/>
-				<Toggle
-					size="sm"
-					label="Chat translúcido"
-					checked={o.translucent}
-					onChange={(v) => set({ translucent: v })}
-				/>
-			</ScenePieces>
-		),
 		chatting: () => (
-			<ScenePieces note="Apaga la pieza que no quieras en la escena. La cámara, el chat y las alertas van siempre.">
-				<Toggle size="sm" label="Eventos" checked={o.events} onChange={(v) => set({ events: v })} />
-				<Toggle
-					size="sm"
-					label="Meta"
-					checked={o.goalPiece}
-					onChange={(v) => set({ goalPiece: v })}
-				/>
-			</ScenePieces>
+			<ScenePieces
+				pieces={[
+					{
+						id: "goal",
+						title: "Meta",
+						on: o.goalPiece,
+						toggle: (v) => set({ goalPiece: v }),
+						body: goalOptions,
+					},
+					{ id: "status", title: "Estado", body: () => <StatusOptions o={o} set={set} /> },
+					{ id: "alerts", title: "Alertas", body: alertOptions },
+					{
+						id: "chat",
+						title: "Chat",
+						body: () => <ChatOptions o={o} set={set} translucent={false} />,
+					},
+					{
+						id: "events",
+						title: "Eventos",
+						on: o.events,
+						toggle: (v) => set({ events: v }),
+						body: () => <EventOptions o={o} set={set} />,
+					},
+					{
+						id: "camera",
+						title: "Cámara",
+						body: () => (
+							<CameraOptions o={o} set={set} defaultName={p.cameraName} ratio={false} />
+						),
+					},
+				]}
+			/>
 		),
 		starting: () => <Countdown value={o.minutes ?? 0} onChange={(minutes) => set({ minutes })} />,
 		brb: () => <Countdown value={o.minutes ?? 0} onChange={(minutes) => set({ minutes })} />,
@@ -521,6 +549,7 @@ export function OverlaySources(p: OverlaySourcesProps) {
 								</span>
 								<ButtonGroup
 									size="sm"
+									className={BUTTON_GROUP_FRAME}
 									aria-label="Lienzo de las escenas"
 									value={canvasId}
 									onChange={pickCanvas}
@@ -614,20 +643,30 @@ function SourceUrl({
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
+	const { origin, rest } = splitOrigin(maskToken(url, ctx.token), ctx.origin);
 	return (
 		<div className="flex flex-col gap-2">
-			<Input
-				label="URL para OBS"
-				readOnly
-				value={maskToken(url, ctx.token)}
-				className="[&_input]:font-mono"
-				data-url={kind}
-				trailingButton={{
-					label: copied ? "Copiada" : "Copiar",
-					icon: copied ? Check : Copy01,
-					onClick: copy,
-				}}
-			/>
+			{/* Deshabilitado: así nadie copia a mano los puntos creyendo que es el token (specs/obs-overlays, «Token sin
+			    poder seleccionarse»). «Copiar» va fuera porque un `Input` deshabilitado deshabilita también su botón. */}
+			<div className="flex flex-wrap items-end gap-3">
+				<Input
+					label="URL para OBS"
+					disabled
+					prefix={origin || undefined}
+					value={rest}
+					className="min-w-0 flex-[1_1_320px] [&_.opacity-50]:bg-secondary [&_.opacity-50]:opacity-100"
+					data-url={kind}
+				/>
+				<Button
+					hierarchy="secondary"
+					size="md"
+					iconLeading={copied ? Check : Copy01}
+					onClick={copy}
+					aria-live="polite"
+				>
+					{copied ? "Copiada" : "Copiar"}
+				</Button>
+			</div>
 			<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
 				<p className="text-sm text-tertiary">{note}</p>
 				{guide ? (
@@ -644,11 +683,47 @@ function SourceUrl({
 	);
 }
 
-function ScenePieces({ note, children }: { note: string; children: ReactNode }) {
+interface ScenePiece {
+	id: string;
+	title: string;
+	/** Encendida o apagada; sin `toggle`, la pieza va siempre. */
+	on?: boolean;
+	toggle?: (on: boolean) => void;
+	body: () => ReactNode;
+}
+
+/**
+ * Un bloque por pieza de la escena (specs/obs-overlays, «Opciones de cada pieza en las escenas»), con su interruptor si
+ * es opcional y las mismas opciones que la pieza suelta. «Meta» empieza abierta: es lo que más se cambia en directo.
+ */
+function ScenePieces({ pieces }: { pieces: ScenePiece[] }) {
 	return (
 		<div className="flex flex-col gap-3">
-			<p className="text-sm text-tertiary">{note}</p>
-			<div className="flex flex-wrap gap-x-10 gap-y-4">{children}</div>
+			<p className="text-sm text-tertiary">
+				Cada pieza con sus opciones, las mismas que suelta. Las que no van siempre se pueden apagar.
+			</p>
+			<Accordion
+				divider
+				headingLevel={4}
+				defaultExpanded={["goal"]}
+				items={pieces.map((x) => ({
+					id: x.id,
+					title: x.toggle && !x.on ? `${x.title} · apagada` : x.title,
+					content: (
+						<div className="flex flex-col gap-4 pb-2">
+							{x.toggle ? (
+								<Toggle
+									size="sm"
+									label={`Enseñar ${x.title.toLowerCase()} en la escena`}
+									checked={x.on}
+									onChange={x.toggle}
+								/>
+							) : null}
+							{x.toggle && !x.on ? null : x.body()}
+						</div>
+					),
+				}))}
+			/>
 		</div>
 	);
 }

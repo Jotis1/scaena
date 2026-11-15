@@ -1,8 +1,8 @@
-// Secciones del estudio, en el orden de la barra de secciones y del menú «Estudio» de la cabecera
+// Secciones del estudio, en el orden de la barra lateral
 // (specs/channel-site, «Navegación del estudio»).
 export const STUDIO_PAGES = [
 	{ id: "overlays", href: "/studio/overlays", label: "Overlays" },
-	{ id: "guide", href: "/studio/guide", label: "Guía de OBS" },
+	{ id: "guide", href: "/studio/guide", label: "Guía de uso" },
 	{ id: "assets", href: "/studio/assets", label: "Recursos" },
 	{ id: "connection", href: "/studio/connection", label: "Conexión" },
 ] as const;

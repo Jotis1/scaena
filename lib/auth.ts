@@ -7,7 +7,12 @@ import { db } from "./db";
 import { env } from "./env";
 
 /** Permisos de solo lectura para recibir follows, suscripciones y bits por EventSub. */
-export const TWITCH_SCOPES = ["moderator:read:followers", "channel:read:subscriptions", "bits:read"];
+export const TWITCH_SCOPES = [
+	"moderator:read:followers",
+	"channel:read:subscriptions",
+	"bits:read",
+	"channel:read:goals",
+];
 
 /** Código de error con el que vuelve a `/studio/login` una cuenta que no puede entrar. */
 export const ERROR_NOT_ALLOWED = "account_not_allowed";

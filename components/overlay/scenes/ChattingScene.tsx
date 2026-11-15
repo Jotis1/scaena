@@ -7,7 +7,7 @@ import { LiveEvents } from "../LiveEvents";
 import { LiveGoal } from "../LiveGoal";
 import { LiveStatusPill } from "../LiveStatusPill";
 import { CAMERA_HOLE, ChattingLayout } from "./layouts";
-import type { SceneOptions } from "./params";
+import { SCENE_ROWS, type SceneOptions } from "./params";
 
 /** Escena de Just Chatting en vivo (design.md, decisión 15). La cámara la pone OBS por el hueco del fondo. */
 export function ChattingScene({ profile, o, width }: { profile: Profile; o: SceneOptions; width?: number }) {
@@ -16,13 +16,20 @@ export function ChattingScene({ profile, o, width }: { profile: Profile; o: Scen
 		<ChannelEventsProvider channel={channel} token={o.token} since={o.since}>
 			<ChattingLayout
 				width={width}
-				status={<LiveStatusPill channel={channel} viewers={false} />}
-				alerts={<LiveAlerts message durationMs={7000} />}
+				status={<LiveStatusPill channel={channel} viewers={o.viewers} />}
+				alerts={<LiveAlerts message={o.message} durationMs={7000} />}
 				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} /> : null}
-				events={o.events ? <LiveEvents rows={2} animate width={400} /> : null}
+				events={
+					o.events ? <LiveEvents rows={o.rows ?? SCENE_ROWS.chatting} animate width={400} /> : null
+				}
 				camera={
 					o.camera ? (
-						<CamFrame ratio="16:9" width={CAMERA_HOLE.width} live name={profile.camera.name} />
+						<CamFrame
+							ratio="16:9"
+							width={CAMERA_HOLE.width}
+							live
+							name={o.cameraName ?? profile.camera.name}
+						/>
 					) : null
 				}
 				chat={
@@ -34,7 +41,7 @@ export function ChattingScene({ profile, o, width }: { profile: Profile; o: Scen
 							height={736}
 							translucent={false}
 							fade
-							animate
+							animate={o.animate}
 						/>
 					) : null
 				}

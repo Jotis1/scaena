@@ -1,6 +1,7 @@
 // URL de cada fuente de navegador del estudio (diseño: «Overlays»; design.md, decisiones 9, 10 y 15). Solo los
 // parámetros que no son el valor por defecto, para que la URL se lea. Las que reciben eventos llevan `token`; la
 // las escenas montadas, además, `since` (la hora a la que se copia), por si no hay meta guardada y cuenta la URL.
+import { SCENE_ROWS } from "@/components/overlay/scenes/params";
 import { type CanvasId, DEFAULT_CANVAS } from "../overlay/canvas";
 
 export type SourceKind =
@@ -51,6 +52,15 @@ export function sourceUrl(kind: SourceKind, o: SourceOptions, c: UrlContext): st
 	const flag = (name: string, value: boolean | undefined, byDefault: boolean) => {
 		if (value !== undefined && value !== byDefault) q.set(name, value ? "1" : "0");
 	};
+	// Las opciones de cada pieza dentro de las escenas montadas, con los mismos nombres y valores por defecto que la pieza
+	// suelta (specs/obs-overlays, «Opciones de cada pieza en las escenas»).
+	const pieceFlags = (defaultRows: number) => {
+		flag("animate", o.animate, true);
+		flag("message", o.message, true);
+		if (o.rows !== undefined && o.rows !== defaultRows) q.set("rows", String(o.rows));
+		flag("viewers", o.viewers, false);
+		if (o.name) q.set("name", o.name);
+	};
 	switch (kind) {
 		case "chat":
 			flag("translucent", o.translucent, false);
@@ -75,6 +85,7 @@ export function sourceUrl(kind: SourceKind, o: SourceOptions, c: UrlContext): st
 			break;
 		case "scene/game":
 			flag("translucent", o.translucent, true);
+			pieceFlags(SCENE_ROWS.game);
 			flag("camera", o.camera, true);
 			flag("events", o.events, true);
 			if (o.goalPiece === false) q.set("goal", "0");
@@ -82,6 +93,7 @@ export function sourceUrl(kind: SourceKind, o: SourceOptions, c: UrlContext): st
 			break;
 		case "scene/chatting":
 			flag("events", o.events, true);
+			pieceFlags(SCENE_ROWS.chatting);
 			if (o.goalPiece === false) q.set("goal", "0");
 			else q.set("since", String(c.now));
 			break;
@@ -105,4 +117,12 @@ export function sourceUrl(kind: SourceKind, o: SourceOptions, c: UrlContext): st
 /** La misma URL con el token tapado salvo los cuatro últimos, para enseñarla en pantalla sin filtrarlo. */
 export function maskToken(url: string, token: string): string {
 	return token ? url.replace(token, `••••${token.slice(-4)}`) : url;
+}
+
+/**
+ * La URL partida en el origen y el resto, para el campo con prefijo del estudio (specs/obs-overlays, «Página de URLs
+ * para copiar»): `https://scaena.jotis.me` va aparte y el campo enseña `/overlay/…`.
+ */
+export function splitOrigin(url: string, origin: string): { origin: string; rest: string } {
+	return url.startsWith(origin) ? { origin, rest: url.slice(origin.length) } : { origin: "", rest: url };
 }

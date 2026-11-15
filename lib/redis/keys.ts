@@ -13,7 +13,9 @@ export type ChannelKeyPart =
 	| "token"
 	| "settings"
 	/** Cuenta de la meta guardada (un entero; specs/twitch-events, «Eventos recientes y metas»). */
-	| "goal";
+	| "goal"
+	/** Meta del creador activa en Twitch (specs/twitch-events, «Seguimiento de la meta de Twitch»). */
+	| "twitch-goal";
 
 /** Los ids de usuario de Twitch son solo cifras. Así ningún id puede colarse en la clave de otro canal. */
 function validId(id: string): string {

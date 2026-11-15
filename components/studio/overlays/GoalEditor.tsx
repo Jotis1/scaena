@@ -20,11 +20,14 @@ export function GoalEditor({
 	goal,
 	onSaved,
 	onDraft,
+	hint,
 }: {
 	goal: GoalState | null;
 	onSaved: (g: GoalState) => void;
 	/** Para la vista previa, mientras se escribe. */
 	onDraft: (g: GoalState) => void;
+	/** Una frase delante de la explicación, como «Se usa cuando no hay meta en Twitch.». */
+	hint?: string;
 }) {
 	const loaded = goal ?? DEFAULT_GOAL;
 	const [draft, setDraftState] = useState(loaded);
@@ -112,9 +115,9 @@ export function GoalEditor({
 				</div>
 			</div>
 			<p className="text-sm text-tertiary">
-				Es la misma meta en todas partes: la usan la pieza de meta y las escenas de juego y Just
-				Chatting. Al guardar llega en directo, sin tocar OBS. Cambiar el texto o el objetivo no toca
-				la cuenta; «Llevas» la corrige.
+				{hint ? `${hint} ` : null}Es la misma meta en todas partes: la usan la pieza de meta y las
+				escenas de juego y Just Chatting. Al guardar llega en directo, sin tocar OBS. Cambiar el texto
+				o el objetivo no toca la cuenta; «Llevas» la corrige.
 			</p>
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-3">
 				<Button

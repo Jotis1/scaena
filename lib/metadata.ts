@@ -2,7 +2,7 @@
 // imagen es el banner del perfil exportado desde el estudio (`public/banner.png`, 1200×480): si cambia el perfil,
 // se vuelve a exportar en /studio/assets y se sustituye.
 import type { Metadata } from "next";
-import { getMainProfile } from "./profile";
+import { loadMainProfile } from "./profile";
 
 const SITE = "Scaena";
 
@@ -10,8 +10,12 @@ export function siteUrl(): URL {
 	return new URL(process.env.BETTER_AUTH_URL || "https://scaena.jotis.me");
 }
 
-export function pageMetadata(p: { title?: string; description?: string; path: string }): Metadata {
-	const profile = getMainProfile();
+export async function pageMetadata(p: {
+	title?: string;
+	description?: string;
+	path: string;
+}): Promise<Metadata> {
+	const profile = await loadMainProfile();
 	const title = p.title ? `${p.title} · ${SITE}` : `${SITE} · ${profile.name}`;
 	const description = p.description ?? profile.tagline;
 	const image = {
