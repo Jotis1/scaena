@@ -111,7 +111,7 @@ export function ManualSteps() {
 						<a href="/studio/connection" className={LINK}>
 							Conexión
 						</a>
-						. Si Scaena pide un permiso nuevo, vuelve a entrar.
+						. Si Conexión dice que falta un permiso, vuelve a entrar con Twitch.
 					</>,
 					"En OBS, pon el lienzo base en Ajustes › Vídeo: 1920 × 1080 o 3440 × 1440, el mismo que elijas arriba.",
 					"Añade cada URL de Overlays como fuente de navegador, con el ancho y el alto de su tabla.",

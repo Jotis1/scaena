@@ -511,7 +511,9 @@ export function OverlaySources(p: OverlaySourcesProps) {
 			/>
 
 			<div className="flex flex-wrap items-start gap-x-8 gap-y-6">
-				<div className="flex min-w-0 flex-[1_1_220px] flex-col gap-4">
+				{/* 240 px como poco: «Piezas 6» y «Escenas 6» no encogen y, con el marco, piden 222. Con menos, «Escenas» se
+				sale del marco por la derecha. */}
+				<div className="flex min-w-0 flex-[1_1_240px] flex-col gap-4">
 					<Tabs
 						type="button-border"
 						size="sm"
@@ -526,7 +528,7 @@ export function OverlaySources(p: OverlaySourcesProps) {
 					/>
 					<Tabs
 						orientation="vertical"
-						type="button-gray"
+						type="line"
 						size="md"
 						aria-label="Fuentes"
 						value={sel}

@@ -92,7 +92,7 @@ El overlay de alertas SHALL mostrar las alertas de una en una, en orden de llega
 - **THEN** se ve la alerta del follow, sale, y después entra la de la sub
 
 ### Requirement: Eventos recientes y metas
-El overlay de eventos SHALL mostrar los últimos eventos del más reciente al más antiguo. El overlay de meta SHALL avanzar con los eventos del tipo que cuenta la meta de Scaena (suscripciones, seguidores o bits) desde un valor inicial y con un texto propio, salvo con una meta de Twitch activa. Con una meta guardada, la cuenta SHALL llevarla el servidor: cada evento que cuenta SHALL sumar una sola vez aunque haya varios overlays abiertos o ninguno, y un overlay al abrirse SHALL verla al día.
+El overlay de eventos SHALL mostrar los últimos eventos del más reciente al más antiguo. Cada meta de Scaena SHALL avanzar con los eventos de su tipo (suscripciones, seguidores o bits), salga o no. Con metas guardadas, la cuenta SHALL llevarla el servidor: cada evento que cuenta SHALL sumar una sola vez a cada meta de su tipo aunque haya varios overlays abiertos o ninguno, y un overlay al abrirse SHALL verla al día.
 
 #### Scenario: Meta de subs
 - **WHEN** la meta cuenta suscripciones, empieza en 284 y llega una sub regalada de 5
@@ -106,6 +106,14 @@ El overlay de eventos SHALL mostrar los últimos eventos del más reciente al m�
 - **WHEN** la pieza de meta y la escena de juego están abiertas a la vez y llega una sub
 - **THEN** las dos suman 1, y la cuenta guardada sube 1
 
+#### Scenario: La meta que no sale también cuenta
+- **WHEN** sale la meta de subs, la de seguidores va por 40 y llegan 2 follows
+- **THEN** al elegir la de seguidores muestra 42
+
+#### Scenario: Dos metas del mismo tipo
+- **WHEN** hay dos metas de Scaena de seguidores, una por 10 y otra por 500, y llega un follow
+- **THEN** pasan a 11 y a 501
+
 ### Requirement: Disparo de prueba
 La fuente «Alertas» de la página privada de overlays SHALL permitir lanzar un evento de prueba de cada tipo, con un botón al lado de su frase: follow, sub de nivel 1, renovación de 14 meses, 5 subs regaladas, raid de 1.284 y 500 bits. El evento de prueba llega a los overlays como uno real, con la frase guardada de su tipo, va marcado como prueba en el registro y no aparece en el chat. El evento de prueba MUST NOT sumar a ninguna meta.
 
@@ -118,19 +126,27 @@ La fuente «Alertas» de la página privada de overlays SHALL permitir lanzar un
 - **THEN** la alerta de prueba sale, pero la meta sigue en 284
 
 ### Requirement: Seguimiento de la meta de Twitch
-El sistema SHALL guardar la meta del creador activa del canal: al conectar los eventos y al abrir el estudio la SHALL pedir a Twitch, y SHALL actualizarla con los avisos de inicio, progreso y final de meta. Cada cambio SHALL llegar a los overlays abiertos con la meta y su progreso absoluto. Al acabar la meta, SHALL borrarla. Si Twitch no responde al pedirla, SHALL conservar la que tenía.
+El sistema SHALL guardar todas las metas del creador activas del canal, cada una por su id: al conectar los eventos y al abrir el estudio SHALL pedirlas a Twitch y sustituir las guardadas, y con los avisos de inicio y progreso SHALL actualizar solo la meta del aviso. Un aviso de final SHALL borrar solo esa meta. Cada cambio SHALL llegar a los overlays abiertos con lo que tienen que pintar. Si Twitch no responde al pedirlas, SHALL conservar las que tenía.
 
 #### Scenario: Empieza una meta en Twitch
 - **WHEN** Twitch avisa de que empieza una meta de suscripciones de 0 a 50
-- **THEN** la meta de Twitch guardada es de suscripciones, 0 de 50, y los overlays abiertos la reciben
+- **THEN** queda guardada una meta de Twitch de suscripciones, 0 de 50, que el estudio ofrece en «Qué meta sale»
 
 #### Scenario: Progreso repetido
 - **WHEN** llega dos veces el mismo aviso de progreso, con 12 de 50
 - **THEN** la meta queda en 12 de 50, no en 24
 
 #### Scenario: Meta ya activa al conectar
-- **WHEN** el canal ya tenía en Twitch una meta de seguidores por 950 de 1.000 y se pulsa "Conectar eventos"
-- **THEN** la meta de Twitch guardada pasa a ser esa, con 950 de 1.000, sin esperar al siguiente aviso
+- **WHEN** el canal ya tenía en Twitch una meta de seguidores por 950 de 1.000 y otra de bits por 200 de 500, y se pulsa "Conectar eventos"
+- **THEN** quedan guardadas las dos, con sus cifras, sin esperar al siguiente aviso
+
+#### Scenario: Dos metas a la vez
+- **WHEN** hay guardadas una meta de Twitch de seguidores por 950 y otra de subs por 10, y llega un aviso de progreso de la de subs con 11
+- **THEN** la de subs pasa a 11 y la de seguidores sigue en 950
+
+#### Scenario: Acaba una de dos
+- **WHEN** hay guardadas una meta de Twitch de seguidores y otra de subs, y Twitch avisa de que la de subs ha terminado
+- **THEN** sigue guardada la de seguidores
 
 #### Scenario: Tipos de meta de Twitch
 - **WHEN** Twitch avisa de una meta de tipo `new_cheerer`

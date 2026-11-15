@@ -15,5 +15,7 @@ describe("barra lateral del estudio", () => {
 		);
 		expect(html).toContain('aria-label="Secciones del estudio"');
 		expect(html).not.toContain("Cerrar sesión");
+		// Sin título que repita el estudio o la sección.
+		expect(html).not.toContain("Estudio ·");
 	});
 });

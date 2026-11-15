@@ -25,11 +25,14 @@ type Action = () => Promise<{ error?: string }>;
 export function ConnectionView({
 	status,
 	name,
+	image,
 	connect,
 	disconnect,
 }: {
 	status: ConnectionStatus;
 	name: string;
+	/** Foto de perfil de Twitch de la sesión (specs/twitch-events, «Cuenta conectada con su foto»). */
+	image?: string;
 	connect: Action;
 	disconnect: Action;
 }) {
@@ -88,6 +91,7 @@ export function ConnectionView({
 			{notice ? <Alert color="warning" icon={AlertTriangle} {...notice} /> : null}
 			<AccountCard
 				name={name}
+				image={image}
 				supporting={
 					status.connectedAt
 						? `Eventos conectados desde el ${formatDate(status.connectedAt)}`
@@ -141,7 +145,15 @@ export function ConnectionView({
 }
 
 /** Twitch no responde: el error con «Volver a intentar», y la cuenta, por si hay que desconectar igualmente. */
-export function ConnectionUnreachable({ name, disconnect }: { name: string; disconnect: Action }) {
+export function ConnectionUnreachable({
+	name,
+	image,
+	disconnect,
+}: {
+	name: string;
+	image?: string;
+	disconnect: Action;
+}) {
 	return (
 		<div className="flex flex-col gap-6">
 			<Alert
@@ -150,18 +162,20 @@ export function ConnectionUnreachable({ name, disconnect }: { name: string; disc
 				description="Twitch no responde o ha rechazado la consulta. Las suscripciones siguen como estaban; lo que falla es poder verlas. Suele arreglarse solo en unos minutos."
 				actions={<RetryButton />}
 			/>
-			<AccountCard name={name} supporting={`twitch.tv/${name}`} disconnect={disconnect} />
+			<AccountCard name={name} image={image} supporting={`twitch.tv/${name}`} disconnect={disconnect} />
 		</div>
 	);
 }
 
 function AccountCard({
 	name,
+	image,
 	supporting,
 	disconnect,
 	children,
 }: {
 	name: string;
+	image?: string;
 	supporting: string;
 	disconnect: Action;
 	children?: ReactNode;
@@ -172,6 +186,7 @@ function AccountCard({
 			className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 rounded-xl border border-secondary px-6 py-5"
 		>
 			<AvatarLabel
+				src={image}
 				initials={name.charAt(0).toUpperCase()}
 				size="lg"
 				name={name}

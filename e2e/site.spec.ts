@@ -154,6 +154,8 @@ test.describe("cabecera y tema", () => {
 		await expect(footer.getByRole("link", { name: "YouTube" })).toBeVisible();
 		await expect(footer.getByText("Esta web")).toBeVisible();
 		await expect(footer.getByRole("link", { name: "Vídeos" })).toHaveAttribute("href", "/videos");
+		// Sin sesión, «Estudio» lleva a la entrada, como en la cabecera.
+		await expect(footer.getByRole("link", { name: "Estudio" })).toHaveAttribute("href", "/studio/login");
 		await expect(footer.getByText("Scaena es parte de jotis.me.")).toBeVisible();
 	});
 

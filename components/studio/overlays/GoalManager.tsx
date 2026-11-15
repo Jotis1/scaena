@@ -1,9 +1,10 @@
 "use client";
 
 import { Accordion, Alert, Button, Checkbox, Select } from "@jotis-me/react";
-import { RefreshCw01, Trash01 } from "@untitledui/icons";
-import { useId, useState } from "react";
+import { Loading02, RefreshCw01, Trash01 } from "@untitledui/icons";
+import { useEffect, useId, useRef, useState } from "react";
 import { GoalSourceIcon } from "@/components/brand/GoalSourceIcon";
+import { viewOf } from "@/lib/alerts/goal-pick";
 import type { GoalOverview } from "@/lib/alerts/goal-view";
 import type { GoalRef, GoalShow, GoalState } from "@/lib/alerts/saved-goal";
 import { DEFAULT_GOAL, GoalEditor } from "./GoalEditor";
@@ -11,6 +12,8 @@ import { DEFAULT_GOAL, GoalEditor } from "./GoalEditor";
 // Las metas en el estudio (specs/obs-overlays, «Meta editable en el estudio», «Meta de Twitch», «Qué meta sale»,
 // «Rotación de metas» y «Meta cumplida en la rotación»; design.md del cambio goal-selector-and-rotation, decisión 7).
 // Es el mismo panel en la pieza «Meta» y en el bloque «Meta» de las escenas: un solo ajuste para todo.
+// Qué meta sale se cambia de forma optimista: se ve al momento, con «Guardando…», y vuelve atrás si no se guarda
+// (specs/obs-overlays, «Estado al guardar qué meta sale»; design.md del cambio studio-polish-0-4-1, decisión 3).
 
 const MAX_GOALS = 5;
 const ROTATE = "rotate";
@@ -44,16 +47,50 @@ export function GoalManager({
 }) {
 	const id = useId();
 	const [error, setError] = useState<string | null>(null);
-	const [busy, setBusy] = useState(false);
+	const [saving, setSaving] = useState<"saving" | "saved" | null>(null);
+	const [deleting, setDeleting] = useState<string | null>(null);
+	// Solo vale la última respuesta: si se cambia dos veces seguidas, la primera que vuelva tarde no pisa nada.
+	const seq = useRef(0);
+	const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	useEffect(() => () => clearTimeout(savedTimer.current), []);
 	const all = [...panel.goals, ...panel.twitchGoals];
 	const show = panel.show;
 	const rotating = show?.kind === "rotate";
 	const selected = rotating ? ROTATE : (show?.ref ?? panel.goals[0]?.ref);
 
-	const apply = async (method: "PUT" | "DELETE", body?: unknown, query?: string) => {
-		setBusy(true);
-		const r = await send(method, body, query);
-		setBusy(false);
+	/** Pinta el cambio al momento, lo guarda y, si no se guarda, vuelve a lo que había. */
+	const optimistic = async (next: GoalOverview, body: unknown) => {
+		const before = panel;
+		const n = ++seq.current;
+		onChange(next);
+		setError(null);
+		setSaving("saving");
+		clearTimeout(savedTimer.current);
+		const r = await send("PUT", body);
+		if (n !== seq.current) return;
+		if (typeof r === "string") {
+			onChange(before);
+			setSaving(null);
+			return setError(r);
+		}
+		onChange(r);
+		setSaving("saved");
+		savedTimer.current = setTimeout(() => setSaving(null), 2000);
+	};
+	const putShow = (next: GoalShow) =>
+		optimistic(
+			{
+				...panel,
+				show: next,
+				endedTwitch: undefined,
+				view: viewOf(panel.goals, panel.twitchGoals, next, panel.done, Date.now()),
+			},
+			{ show: next },
+		);
+	const removeGoal = async (ref: GoalRef) => {
+		setDeleting(ref);
+		const r = await send("DELETE", undefined, `?goal=${ref.replace(/^scaena:/, "")}`);
+		setDeleting(null);
 		if (typeof r === "string") return setError(r);
 		setError(null);
 		onChange(r);
@@ -61,13 +98,13 @@ export function GoalManager({
 	const choose = (value: string) => {
 		if (value === ROTATE) {
 			const items = all.map((g) => ({ ref: g.ref, whenDone: "keep" as const }));
-			return apply("PUT", { show: { kind: "rotate", every: 10, items } satisfies GoalShow });
+			return putShow({ kind: "rotate", every: 10, items });
 		}
-		return apply("PUT", { show: { kind: "one", ref: value as GoalRef } });
+		return putShow({ kind: "one", ref: value as GoalRef });
 	};
 	const rotation = show?.kind === "rotate" ? show : null;
 	const setRotation = (patch: Partial<Extract<GoalShow, { kind: "rotate" }>>) =>
-		rotation ? apply("PUT", { show: { ...rotation, ...patch } }) : undefined;
+		rotation ? putShow({ ...rotation, ...patch }) : undefined;
 	const item = (ref: GoalRef) => rotation?.items.find((i) => i.ref === ref);
 	const toggleItem = (ref: GoalRef, on: boolean) => {
 		if (!rotation) return;
@@ -106,7 +143,9 @@ export function GoalManager({
 						<Button
 							hierarchy="link-color"
 							size="sm"
-							onClick={() => apply("PUT", { dismissEnded: true })}
+							onClick={() =>
+								optimistic({ ...panel, endedTwitch: undefined }, { dismissEnded: true })
+							}
 						>
 							Entendido
 						</Button>
@@ -120,7 +159,6 @@ export function GoalManager({
 						label="Qué meta sale"
 						hint="Vale para la pieza de meta y para las escenas, y llega en directo a OBS."
 						value={selected}
-						disabled={busy}
 						onChange={(v) => choose(v)}
 						options={options}
 					/>
@@ -154,7 +192,7 @@ export function GoalManager({
 													onlyOne ? "Tiene que quedar al menos una." : progress(g)
 												}
 												checked={Boolean(it)}
-												disabled={busy || onlyOne}
+												disabled={onlyOne}
 												onChange={(e) => toggleItem(g.ref, e.target.checked)}
 											/>
 										</span>
@@ -164,7 +202,6 @@ export function GoalManager({
 													size="sm"
 													aria-label={`Al cumplirse «${g.label}»`}
 													value={it.whenDone}
-													disabled={busy}
 													onChange={(v) => whenDone(g.ref, v as "keep" | "drop")}
 													options={[
 														{ value: "keep", label: "Seguir al cumplirse" },
@@ -181,7 +218,6 @@ export function GoalManager({
 							<Select
 								label="Cada cuánto cambia"
 								value={String(rotation.every)}
-								disabled={busy}
 								onChange={(v) => setRotation({ every: Number(v) as 10 | 20 | 30 })}
 								options={[
 									{ value: "10", label: "Cada 10 segundos" },
@@ -196,6 +232,21 @@ export function GoalManager({
 						</p>
 					</fieldset>
 				) : null}
+				{/* El estado del guardado: un icono que gira (quieto con «reducir movimiento») y «Guardando…»; luego,
+				«Guardado» unos segundos. */}
+				<p role="status" className="flex min-h-5 items-center gap-2 text-sm text-tertiary">
+					{saving === "saving" ? (
+						<>
+							<Loading02
+								aria-hidden="true"
+								className="size-4 text-fg-quaternary motion-safe:animate-spin"
+							/>
+							Guardando…
+						</>
+					) : saving === "saved" ? (
+						"Guardado"
+					) : null}
+				</p>
 				{error ? (
 					<p role="alert" className="text-sm text-error-primary">
 						{error}
@@ -239,14 +290,12 @@ export function GoalManager({
 											hierarchy="secondary"
 											size="sm"
 											iconLeading={Trash01}
-											disabled={busy || panel.goals.length === 1}
-											onClick={() =>
-												apply(
-													"DELETE",
-													undefined,
-													`?goal=${g.ref.replace(/^scaena:/, "")}`,
-												)
+											disabled={
+												panel.goals.length === 1 ||
+												(deleting !== null && deleting !== g.ref)
 											}
+											loading={deleting === g.ref}
+											onClick={() => removeGoal(g.ref)}
 										>
 											Borrar «{g.label}»
 										</Button>

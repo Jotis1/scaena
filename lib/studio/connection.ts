@@ -125,12 +125,6 @@ export function activeProgress(rows: SubscriptionRow[]): { active: number; total
 	return { active, total: rows.length, percent: rows.length ? (active / rows.length) * 100 : 0 };
 }
 
-/** Permisos que pide Scaena y que la sesión no tiene: los que se pidieron después de entrar (specs/twitch-events,
- * «Conexión del canal»). */
-export function missingScopes(granted: readonly string[], wanted: readonly string[]): string[] {
-	return wanted.filter((s) => !granted.includes(s));
-}
-
 /** Qué deja ver cada permiso que se pide al entrar, en castellano (diseño: «Conexión - sin conectar»). */
 export const SCOPE_DESCRIPTIONS: Record<string, string> = {
 	"moderator:read:followers": "Saber quién empieza a seguir el canal",

@@ -11,8 +11,6 @@ export interface StudioSession {
 	image?: string;
 	/** Id de Twitch de la cuenta: el canal del estudio. */
 	channelId: string;
-	/** Permisos que dio la cuenta al entrar; si falta alguno de `TWITCH_SCOPES`, hay que volver a entrar. */
-	scopes: string[];
 }
 
 export async function readSession(requestHeaders: Headers): Promise<StudioSession | null> {
@@ -28,7 +26,6 @@ export async function readSession(requestHeaders: Headers): Promise<StudioSessio
 				name: session.user.name,
 				image: session.user.image ?? undefined,
 				channelId: twitch.accountId,
-				scopes: twitch.scopes ?? [],
 			}
 		: null;
 }
