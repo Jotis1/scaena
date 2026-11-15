@@ -41,11 +41,15 @@ test("hay un panel por entrada del perfil y el banner", async ({ page }) => {
 	await page.goto("/studio/assets");
 	await expect(page.locator("[data-panel]")).toHaveCount(profile.panels.length);
 	for (const p of profile.panels)
-		await expect(page.getByRole("region", { name: `Panel ${p.title}` })).toBeVisible();
-	await expect(page.getByRole("region", { name: "Banner" })).toBeVisible();
+		await expect(page.getByRole("article", { name: `Panel ${p.title}` })).toBeVisible();
+	await expect(page.getByRole("article", { name: "Banner" })).toBeVisible();
+	// Cada pieza enseña el nombre de su archivo.
+	await expect(
+		page.getByRole("article", { name: "Panel Normas" }).getByText("panel-normas.png"),
+	).toBeVisible();
 	// El panel con acción enseña su enlace para copiarlo en Twitch.
 	await expect(
-		page.getByRole("region", { name: "Panel Vídeos" }).getByLabel("Enlace del panel"),
+		page.getByRole("article", { name: "Panel Vídeos" }).getByLabel("Enlace del panel"),
 	).toHaveValue("https://www.youtube.com/@jotis_1");
 });
 
@@ -53,24 +57,29 @@ test("`panel-normas.png` mide 640 px de ancho y `banner.png`, 1200×480", async 
 	await page.goto("/studio/assets");
 	const normas = await download(page, () =>
 		page
-			.getByRole("region", { name: "Panel Normas" })
-			.getByRole("button", { name: "Exportar PNG" })
+			.getByRole("article", { name: "Panel Normas" })
+			.getByRole("button", { name: "Descargar el panel Normas" })
 			.click(),
 	);
 	expect(normas.name).toBe("panel-normas.png");
 	expect(PNG.sync.read(normas.bytes).width).toBe(640);
 
 	const banner = await download(page, () =>
-		page.getByRole("region", { name: "Banner" }).getByRole("button", { name: "Exportar PNG" }).click(),
+		page
+			.getByRole("article", { name: "Banner" })
+			.getByRole("button", { name: "Descargar banner" })
+			.click(),
 	);
 	expect(banner.name).toBe("banner.png");
 	const b = PNG.sync.read(banner.bytes);
 	expect([b.width, b.height]).toEqual([1200, 480]);
 });
 
-test("«Exportar todo» trae todos los PNG en un .zip", async ({ page }) => {
+test("«Descargar todo (.zip)» trae todos los PNG en un .zip", async ({ page }) => {
 	await page.goto("/studio/assets");
-	const zip = await download(page, () => page.getByRole("button", { name: "Exportar todo" }).click());
+	const zip = await download(page, () =>
+		page.getByRole("button", { name: "Descargar todo (.zip)" }).click(),
+	);
 	expect(zip.name).toMatch(/\.zip$/);
 	const files = unzipSync(new Uint8Array(zip.bytes));
 	expect(Object.keys(files).sort()).toEqual(
@@ -85,7 +94,8 @@ test("cada PNG se parece a la captura de Chromium del mismo nodo", async ({ page
 	await page.evaluate(() => document.fonts.ready);
 	const files = unzipSync(
 		new Uint8Array(
-			(await download(page, () => page.getByRole("button", { name: "Exportar todo" }).click())).bytes,
+			(await download(page, () => page.getByRole("button", { name: "Descargar todo (.zip)" }).click()))
+				.bytes,
 		),
 	);
 	// Se traen las copias a la vista para que Chromium las pueda capturar.

@@ -30,14 +30,18 @@ test("el aviso dice con qué cuenta se ha entrado, dentro de la tarjeta", async 
 		.locator("xpath=../../..");
 	await expect(
 		card.getByText(
-			"Has entrado como otra_cuenta (id 42), que no está entre las que pueden usar el Estudio.",
+			"Has entrado como otra_cuenta (id 42), que no está entre las que pueden usar el Estudio. Si tienes otra cuenta de Twitch, prueba con ella.",
 		),
 	).toBeVisible();
-	await expect(page.locator("a.bg-brand-solid, button.bg-brand-solid")).toHaveCount(0);
+	// «Probar con otra cuenta» es la única acción principal de la tarjeta.
+	await expect(page.locator("main").locator("a.bg-brand-solid, button.bg-brand-solid")).toHaveCount(1);
 });
 
 test("la entrada tiene el nombre de la app y el botón de tema", async ({ page }) => {
 	await page.goto("/studio/login");
-	await expect(page.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ })).toBeVisible();
-	await expect(page.getByText("Scaena", { exact: true })).toBeVisible();
+	await expect(page.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ }).first()).toBeVisible();
+	await expect(page.getByRole("banner").getByText("Scaena", { exact: true }).first()).toBeVisible();
+	// La cabecera de la web, sin «Estudio», y la vuelta a la web desde la tarjeta.
+	await expect(page.getByRole("banner").getByRole("link", { name: "Estudio" })).toHaveCount(0);
+	await expect(page.getByRole("link", { name: "Vuelve a la web del canal" })).toHaveAttribute("href", "/");
 });

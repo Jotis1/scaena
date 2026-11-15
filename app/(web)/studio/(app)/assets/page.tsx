@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EventsNotice } from "@/components/studio/EventsNotice";
 import { ProfileAssets } from "@/components/studio/ProfileAssets";
+import { StudioContent } from "@/components/studio/StudioContent";
 import { getMainProfile } from "@/lib/profile";
 import { bannerOf, panelsOf } from "@/lib/studio/panels";
 import { requirePageSession } from "@/lib/studio/session";
@@ -18,7 +19,9 @@ export default async function AssetsPage() {
 			<Suspense fallback={null}>
 				<EventsNotice channelId={session.channelId} />
 			</Suspense>
-			<ProfileAssets panels={panelsOf(profile)} banner={bannerOf(profile)} />
+			<StudioContent>
+				<ProfileAssets panels={panelsOf(profile)} banner={bannerOf(profile)} />
+			</StudioContent>
 		</>
 	);
 }

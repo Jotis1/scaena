@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { PROFILE_PATH, parseProfile } from "../profile";
 import { keys } from "../redis/keys";
 import { memoryStore } from "../storage/memory";
-import { fillPhrase } from "./phrase";
+import { ALERT_TYPES } from "../twitch/eventsub/event";
+import { fillPhrase, phraseError } from "./phrase";
 import { effectivePhrases, readSettings, SettingsError, saveSettings } from "./settings";
 
 const profile = parseProfile(readFileSync(PROFILE_PATH, "utf8"));
@@ -35,16 +36,41 @@ describe("frases de alerta", () => {
 		expect(effectivePhrases(profile, await readSettings(store, CHANNEL))).toEqual(profile.alerts);
 	});
 
-	it("`{nombre}` se rechaza con un mensaje que lista los huecos", async () => {
+	it("`{nombre}` se rechaza con un mensaje que dice qué huecos valen en esa alerta", async () => {
 		const store = memoryStore();
 		const error = await saveSettings(store, CHANNEL, profile, {
-			alerts: { follow: "Hola, {nombre}." },
+			alerts: { follow: "Hola, {nombre}.", raid: "Llegan {nombre}." },
 		}).catch((e) => e);
 		expect(error).toBeInstanceOf(SettingsError);
-		expect(error.fields.follow).toMatch(
-			/\{nombre\}.*\{meses\}, \{cantidad\}, \{espectadores\}, \{bits\}/,
+		expect(error.fields.follow).toBe("El hueco {nombre} no vale aquí. Esta alerta no tiene huecos.");
+		expect(error.fields.raid).toBe(
+			"El hueco {nombre} no vale aquí. En esta alerta solo se rellena {espectadores}.",
 		);
 		expect(await store.get(keys.channel(CHANNEL, "settings"))).toBeNull();
+	});
+
+	// specs/obs-overlays, «Frases de alerta editables»: cada frase, con los huecos de su tipo.
+	it("hueco de otra alerta: bits con {bit} y follow con {meses} no se guardan", async () => {
+		const store = memoryStore();
+		const error = await saveSettings(store, CHANNEL, profile, {
+			alerts: { bits: "{bit} bits.", follow: "{meses} meses siguiendo." },
+		}).catch((e) => e);
+		expect(error.fields.bits).toBe("El hueco {bit} no vale aquí. En esta alerta solo se rellena {bits}.");
+		expect(error.fields.follow).toMatch(/{meses} no vale aquí. Esta alerta no tiene huecos/);
+		expect(await store.get(keys.channel(CHANNEL, "settings"))).toBeNull();
+	});
+
+	it("una frase guardada antes, con un hueco de otra alerta, se sigue leyendo", async () => {
+		const store = memoryStore();
+		await store.set(keys.channel(CHANNEL, "settings"), {
+			alerts: { follow: "{meses} meses siguiendo." },
+		});
+		expect((await readSettings(store, CHANNEL)).alerts.follow).toBe("{meses} meses siguiendo.");
+		expect(phraseError("follow", "{meses} meses siguiendo.")).toMatch(/no tiene huecos/);
+	});
+
+	it("las frases del perfil del canal cumplen los huecos de su tipo", () => {
+		for (const t of ALERT_TYPES) expect(phraseError(t, profile.alerts[t]), t).toBeNull();
 	});
 
 	it("más de 120 caracteres no se guarda", async () => {

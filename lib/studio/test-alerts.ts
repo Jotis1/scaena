@@ -14,7 +14,7 @@ export interface TestAlert {
 
 export const TEST_ALERTS: TestAlert[] = [
 	{ type: "follow", label: "Follow", event: { user: "Espectador de prueba" } },
-	{ type: "sub", label: "Sub nivel 1", event: { user: "Espectador de prueba", tier: 1 } },
+	{ type: "sub", label: "Sub", event: { user: "Espectador de prueba", tier: 1 } },
 	{
 		type: "resub",
 		label: "Renovación de 14 meses",

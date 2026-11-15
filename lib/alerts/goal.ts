@@ -6,10 +6,13 @@ export type GoalType = (typeof GOAL_TYPES)[number];
 
 /** Texto por defecto de cada meta, si la URL no trae `label`. */
 export const GOAL_LABELS: Record<GoalType, string> = {
-	subs: "Subs del mes",
-	follows: "Seguidores del mes",
-	bits: "Bits del mes",
+	subs: "Meta de subs",
+	follows: "Meta de seguidores",
+	bits: "Meta de bits",
 };
+
+/** Unidad de cada meta, si no se da otra: «64 / 100 subs». */
+export const GOAL_UNITS: Record<GoalType, string> = { subs: "subs", follows: "seguidores", bits: "bits" };
 
 /**
  * Subs: las nuevas y las regaladas (cada regalo, su cantidad). Las renovaciones no: ya contaban. Seguidores: uno
@@ -21,3 +24,6 @@ export function goalIncrement(type: GoalType, e: AlertEvent): number {
 	if (type === "follows") return e.type === "follow" ? 1 : 0;
 	return e.type === "bits" ? (e.amount ?? 0) : 0;
 }
+
+/** La unidad que se pinta: la dada o la del tipo. */
+export const goalUnit = (g: { type: GoalType; unit?: string }) => g.unit || GOAL_UNITS[g.type];

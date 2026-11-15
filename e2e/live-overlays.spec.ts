@@ -129,7 +129,7 @@ test.describe("meta", () => {
 		const follow = alert({ type: "follow", user: "Berta" });
 		await fakeEvents(page, (r) => (r.n === 1 ? [settings(), follow] : [settings()]));
 		await page.goto("/overlay/jotis_1/goal?token=bueno&type=follows&start=10&goal=50");
-		await expect(page.getByText("Seguidores del mes")).toBeVisible();
+		await expect(page.getByText("Meta de seguidores")).toBeVisible();
 		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "11");
 		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "50");
 	});
@@ -142,7 +142,7 @@ test.describe("meta", () => {
 		await fakeEvents(page, (r) => (r.n === 1 ? [settings(), saved, sub] : [settings(), saved]));
 		await page.goto("/overlay/jotis_1/goal?token=bueno&type=follows&start=10&goal=50");
 		await expect(page.getByText("Subs del directo")).toBeVisible();
-		await expect(page.getByText("Seguidores del mes")).toHaveCount(0);
+		await expect(page.getByText("Meta de seguidores")).toHaveCount(0);
 		// La sub ya va contada en la cifra del servidor: el overlay no la vuelve a sumar.
 		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "284");
 		await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "300");

@@ -1,14 +1,13 @@
-import { Alert, AppIcon, BackgroundPattern } from "@jotis-me/react";
-import { Lock01 } from "@untitledui/icons";
+import { Alert, AppIcon } from "@jotis-me/react";
 import type { Metadata } from "next";
 import { SignInWithTwitch } from "@/components/studio/SignInWithTwitch";
-import { ScaenaBrand } from "@/components/web/ScaenaBrand";
-import { ThemeMenu } from "@/components/web/ThemeMenu";
+import { SiteHeader } from "@/components/web/SiteHeader";
 import { ERROR_NOT_ALLOWED } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Entra en el Estudio · Scaena", robots: { index: false } };
 
-// Entrada al estudio (diseño: «Entrada» y «Cuenta sin acceso»; specs/obs-overlays, «Acceso al estudio»).
+// Entrada al estudio (diseño: «Acceso» y «Acceso - cuenta sin acceso»; specs/obs-overlays, «Acceso al estudio»): la
+// cabecera de la web, sin «Estudio», y una tarjeta centrada.
 export default async function StudioLogin({
 	searchParams,
 }: {
@@ -24,15 +23,9 @@ export default async function StudioLogin({
 	const failed = Boolean(error) && !denied;
 
 	return (
-		<div className="relative flex min-h-screen flex-col overflow-hidden bg-secondary">
-			<div aria-hidden="true" className="pointer-events-none absolute inset-0">
-				<BackgroundPattern pattern="grid-dot" size="lg" mask="radial" className="size-full" />
-			</div>
-			<header className="relative flex items-center justify-between gap-3 px-4 py-4 md:px-8">
-				<ScaenaBrand size={32} />
-				<ThemeMenu />
-			</header>
-			<main className="relative flex flex-1 items-center justify-center px-4 pt-8 pb-24">
+		<div className="flex min-h-screen flex-col bg-secondary">
+			<SiteHeader />
+			<main className="flex flex-1 items-center justify-center px-[min(32px,4.2%)] pt-12 pb-24">
 				<div className="flex w-full max-w-110 flex-col gap-6 rounded-2xl border border-secondary bg-primary p-8 shadow-lg">
 					<div className="flex flex-col items-start gap-4">
 						<AppIcon app="scaena" size={48} label="Scaena" />
@@ -41,36 +34,42 @@ export default async function StudioLogin({
 								Entra en el Estudio
 							</h1>
 							<p className="text-md text-tertiary">
-								Aquí se preparan los overlays de OBS, los paneles del perfil y la conexión con
-								Twitch. Se entra con la cuenta de Twitch.
+								La trastienda del canal: overlays, guía de OBS y conexión con Twitch. Solo
+								entra la cuenta del canal; el resto del público se queda en la web, que para
+								eso está.
 							</p>
 						</div>
 					</div>
 
 					{denied ? (
-						<Alert
-							color="warning"
-							icon={Lock01}
-							title="Esta cuenta no tiene acceso"
-							description={`${who ? `Has entrado como ${who}, que no` : "La cuenta de Twitch con la que has entrado no"} está entre las que pueden usar el Estudio.`}
-						/>
+						<div role="alert">
+							<Alert
+								color="error"
+								title="Esta cuenta no tiene acceso"
+								description={`${who ? `Has entrado como ${who}, que no` : "La cuenta de Twitch con la que has entrado no"} está entre las que pueden usar el Estudio. Si tienes otra cuenta de Twitch, prueba con ella.`}
+							/>
+						</div>
 					) : null}
 					{failed ? (
-						<Alert
-							color="error"
-							title="No se ha podido entrar"
-							description="Twitch no ha terminado el inicio de sesión. Vuelve a intentarlo."
-						/>
+						<div role="alert">
+							<Alert
+								color="error"
+								title="No se ha podido entrar"
+								description="Twitch no ha terminado el inicio de sesión. Vuelve a intentarlo."
+							/>
+						</div>
 					) : null}
 
 					<SignInWithTwitch otherAccount={denied} />
 
 					<p className="border-t border-secondary pt-5 text-sm text-tertiary">
-						¿Vienes a ver los directos? La web es{" "}
-						<a href="/" className="font-semibold text-brand-secondary">
-							scaena.jotis.me
+						¿Solo venías a mirar?{" "}
+						<a
+							href="/"
+							className="rounded-sm font-semibold text-brand-secondary focus-visible:shadow-focus-ring focus-visible:outline-none"
+						>
+							Vuelve a la web del canal
 						</a>
-						.
 					</p>
 				</div>
 			</main>

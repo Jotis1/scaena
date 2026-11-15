@@ -2,7 +2,7 @@
 
 import { StreamGoal } from "@jotis-me/react";
 import { useRef, useState } from "react";
-import { type GoalType, goalIncrement } from "@/lib/alerts/goal";
+import { type GoalType, goalIncrement, goalUnit } from "@/lib/alerts/goal";
 import { useAlertListener, useChannelEvents } from "./ChannelEvents";
 
 export interface LiveGoalProps {
@@ -38,9 +38,17 @@ export function LiveGoal({ type, label, start, goal, unit, width = 420 }: LiveGo
 				label={saved.label}
 				current={saved.current}
 				goal={saved.target}
-				unit={saved.unit || undefined}
+				unit={goalUnit(saved)}
 				width={width}
 			/>
 		);
-	return <StreamGoal label={label} current={current} goal={goal} unit={unit} width={width} />;
+	return (
+		<StreamGoal
+			label={label}
+			current={current}
+			goal={goal}
+			unit={goalUnit({ type, unit })}
+			width={width}
+		/>
+	);
 }

@@ -1,21 +1,13 @@
 "use client";
 
-import {
-	Button,
-	CardHeader,
-	ChannelBanner,
-	ChannelPanel,
-	Input,
-	PageHeader,
-	SectionHeader,
-} from "@jotis-me/react";
+import { Badge, Button, ChannelBanner, ChannelPanel, Input } from "@jotis-me/react";
 import { Check, Copy01, Download01, LinkExternal01 } from "@untitledui/icons";
 import { zipSync } from "fflate";
 import { domToBlob } from "modern-screenshot";
-import { useRef, useState } from "react";
-import { ThemeMenu } from "@/components/web/ThemeMenu";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { PROFILE_ICONS } from "@/lib/icons";
 import type { BannerData, PanelData } from "@/lib/studio/panels";
+import { StudioPageHeader } from "./StudioContent";
 
 // Estudio · Recursos (diseño: «Recursos»; specs/twitch-profile-assets; design.md, decisión 11). Cada pieza se
 // enseña como se verá en Twitch y se exporta en el navegador desde una copia a tamaño real fuera de la pantalla:
@@ -111,24 +103,20 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 	};
 
 	return (
-		<div className="flex flex-col gap-8">
-			<PageHeader
+		<div className="flex flex-col gap-10">
+			<StudioPageHeader
 				title="Recursos"
-				description="El banner y los paneles del perfil de Twitch, listos para subir."
-				divider={false}
-				actions={
-					<div className="flex items-center gap-3">
-						<ThemeMenu />
-						<Button
-							hierarchy="primary"
-							size="md"
-							iconLeading={Download01}
-							loading={busy === "all"}
-							onClick={exportAll}
-						>
-							Exportar todo
-						</Button>
-					</div>
+				description="Las imágenes del perfil de Twitch, hechas con los datos del canal. Se descargan aquí y se suben a mano allí: Twitch no deja hacerlo de otra forma."
+				aside={
+					<Button
+						hierarchy="primary"
+						size="md"
+						iconLeading={Download01}
+						loading={busy === "all"}
+						onClick={exportAll}
+					>
+						Descargar todo (.zip)
+					</Button>
 				}
 			/>
 			{error ? (
@@ -137,16 +125,46 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 				</p>
 			) : null}
 
-			<section
-				aria-label="Banner"
-				className="overflow-hidden rounded-xl border border-secondary bg-primary"
-			>
-				<CardHeader
-					title="Banner del perfil"
-					badge="1200 × 480"
-					badgeColor="gray"
-					description="El lema y el horario habitual. Twitch lo recorta en móvil; el texto ya queda dentro de la zona segura."
-					actions={
+			<section aria-labelledby="panels-title" className="flex flex-col gap-5">
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+					<h2 id="panels-title" className="text-xl font-semibold text-primary">
+						Paneles del perfil
+					</h2>
+					<Badge color="gray" type="badge" size="md">
+						{`${panels.length} paneles - PNG de 640 px de ancho`}
+					</Badge>
+				</div>
+				<div className="grid grid-cols-[repeat(auto-fill,minmax(min(352px,100%),1fr))] items-start gap-6">
+					{panels.map((p) => (
+						<PanelItem
+							key={p.slug}
+							p={p}
+							onExport={() => exportOne(p.file)}
+							busy={busy === p.file}
+						/>
+					))}
+				</div>
+			</section>
+
+			<section aria-labelledby="banner-title" className="flex flex-col gap-5">
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+					<h2 id="banner-title" className="text-xl font-semibold text-primary">
+						Banner del canal
+					</h2>
+					<Badge color="gray" type="badge" size="md">
+						PNG de 1200 × 480
+					</Badge>
+				</div>
+				<article
+					aria-label="Banner"
+					className="flex flex-col overflow-hidden rounded-xl border border-secondary"
+				>
+					<div className="bg-secondary p-4">
+						<div className="mx-auto aspect-[5/2] w-full max-w-225 overflow-hidden rounded-lg">
+							<ScaledBanner b={banner} />
+						</div>
+					</div>
+					<AssetFooter file={banner.file}>
 						<Button
 							hierarchy="secondary"
 							size="sm"
@@ -154,27 +172,15 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 							loading={busy === banner.file}
 							onClick={() => exportOne(banner.file)}
 						>
-							Exportar PNG
+							Descargar banner
 						</Button>
-					}
-				/>
-				<div className="px-6 pt-5 pb-6">
-					<div className="h-60 w-150 max-w-full overflow-hidden rounded-lg">
-						<Banner b={banner} scale={0.5} />
-					</div>
-				</div>
+					</AssetFooter>
+				</article>
+				<p className="max-w-180 text-sm text-tertiary">
+					Los textos salen del perfil del canal. Si cambias el horario o las normas, vuelve a
+					descargar: las imágenes de Twitch no se enteran solas.
+				</p>
 			</section>
-
-			<SectionHeader
-				title="Paneles"
-				description="320 px de ancho. Se exportan a 640 px para que se vean nítidos."
-				divider={false}
-			/>
-			<div className="grid grid-cols-[repeat(auto-fill,320px)] gap-x-6 gap-y-8">
-				{panels.map((p) => (
-					<PanelItem key={p.slug} p={p} onExport={() => exportOne(p.file)} busy={busy === p.file} />
-				))}
-			</div>
 
 			{/* Copias a tamaño real para exportar: fuera de la pantalla, sin escalar. */}
 			<div
@@ -196,45 +202,84 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 	);
 }
 
-/** Un panel tal como se verá en Twitch, su enlace (si lleva) para copiar, su nota y «Exportar PNG». */
+/** El banner, encogido al ancho de su caja (900 px como mucho, 5:2 como el de verdad). */
+function ScaledBanner({ b }: { b: BannerData }) {
+	const ref = useRef<HTMLDivElement>(null);
+	const [scale, setScale] = useState(0.75);
+	useEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const measure = () => el.clientWidth > 0 && setScale(el.clientWidth / 1200);
+		measure();
+		const ro = new ResizeObserver(measure);
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, []);
+	return (
+		<div ref={ref} className="size-full">
+			<Banner b={b} scale={scale} />
+		</div>
+	);
+}
+
+/** Pie de cada pieza: el nombre del PNG y su botón (diseño: «Recursos»). */
+function AssetFooter({ file, children }: { file: string; children: ReactNode }) {
+	return (
+		<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-secondary px-4 py-3">
+			<span className="font-mono text-xs text-tertiary">{file}</span>
+			{children}
+		</div>
+	);
+}
+
+/** Un panel tal como se verá en Twitch, su enlace (si lleva) para copiar, su nota y «Descargar». */
 function PanelItem({ p, onExport, busy }: { p: PanelData; onExport: () => void; busy: boolean }) {
 	const [copied, setCopied] = useState(false);
 	const link = p.action?.href;
 	return (
-		<section aria-label={`Panel ${p.title}`} className="flex flex-col gap-3">
-			<div data-panel={p.slug}>
+		<article
+			aria-label={`Panel ${p.title}`}
+			className="flex flex-col overflow-hidden rounded-xl border border-secondary"
+		>
+			<div className="flex justify-center bg-secondary p-4" data-panel={p.slug}>
 				<Panel p={p} />
 			</div>
-			{link ? (
-				<Input
-					label="Enlace del panel"
-					size="sm"
-					readOnly
-					value={link}
-					hint="Va en el campo de enlace del panel, en Twitch."
-					className="[&_input]:font-mono"
-					trailingButton={{
-						label: copied ? "Copiado" : "Copiar",
-						icon: copied ? Check : Copy01,
-						onClick: async () => {
-							await navigator.clipboard.writeText(link);
-							setCopied(true);
-							setTimeout(() => setCopied(false), 2000);
-						},
-					}}
-				/>
+			{link || p.noLinkReason ? (
+				<div className="flex flex-col gap-2 border-t border-secondary px-4 py-3">
+					{link ? (
+						<Input
+							label="Enlace del panel"
+							size="sm"
+							readOnly
+							value={link}
+							hint="Va en el campo de enlace del panel, en Twitch."
+							className="[&_input]:font-mono"
+							trailingButton={{
+								label: copied ? "Copiado" : "Copiar",
+								icon: copied ? Check : Copy01,
+								onClick: async () => {
+									await navigator.clipboard.writeText(link);
+									setCopied(true);
+									setTimeout(() => setCopied(false), 2000);
+								},
+							}}
+						/>
+					) : null}
+					{p.noLinkReason ? <p className="text-sm text-tertiary">{p.noLinkReason}</p> : null}
+				</div>
 			) : null}
-			{p.noLinkReason ? <p className="text-sm text-tertiary">{p.noLinkReason}</p> : null}
-			<Button
-				hierarchy="secondary"
-				size="sm"
-				iconLeading={Download01}
-				loading={busy}
-				onClick={onExport}
-				className="self-start"
-			>
-				Exportar PNG
-			</Button>
-		</section>
+			<AssetFooter file={p.file}>
+				<Button
+					hierarchy="secondary"
+					size="sm"
+					iconLeading={Download01}
+					loading={busy}
+					aria-label={`Descargar el panel ${p.title}`}
+					onClick={onExport}
+				>
+					Descargar
+				</Button>
+			</AssetFooter>
+		</article>
 	);
 }

@@ -8,7 +8,7 @@ import { keys } from "../redis/keys";
 import type { Store } from "../storage/types";
 import { ALERT_TYPES } from "../twitch/eventsub/event";
 import { GOAL_TYPES } from "./goal";
-import type { AlertPhrases } from "./phrase";
+import { type AlertPhrases, phraseError } from "./phrase";
 
 export const settingsSchema = z.object({
 	alerts: z
@@ -83,14 +83,18 @@ export async function saveSettings(
 		if (typeof v === "string" && (v.trim() === "" || v.trim() === profile.alerts[t])) continue;
 		if (v !== undefined) cleaned[t] = v;
 	}
+	// Cada frase, con los huecos de su tipo: la misma regla que enseña el estudio mientras se escribe.
+	const fields: Record<string, string> = {};
+	for (const t of ALERT_TYPES) {
+		const v = cleaned[t];
+		const error = typeof v === "string" ? phraseError(t, v) : null;
+		if (error) fields[t] = error;
+	}
 	// Guardar las frases no toca la meta.
 	const { goal } = await readSettings(store, channelId);
 	const r = settingsSchema.safeParse({ alerts: cleaned, goal });
-	if (!r.success) {
-		const fields: Record<string, string> = {};
-		for (const i of r.error.issues) fields[String(i.path.at(-1))] ??= i.message;
-		throw new SettingsError(fields);
-	}
+	if (!r.success) for (const i of r.error.issues) fields[String(i.path.at(-1))] ??= i.message;
+	if (!r.success || Object.keys(fields).length) throw new SettingsError(fields);
 	await store.set(keys.channel(channelId, "settings"), r.data);
 	const phrases = effectivePhrases(profile, r.data);
 	await store.xadd(keys.channel(channelId, "events"), {
