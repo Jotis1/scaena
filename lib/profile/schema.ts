@@ -80,70 +80,93 @@ const social = z.object({
 	url: z.url().optional(),
 });
 
-export const profileSchema = z
-	.object({
-		/** Nombre con el que se presenta el canal: "Jotis". */
-		name: uiText,
-		twitch: z.object({
-			login: z
-				.string()
-				.regex(/^[a-z0-9_]{3,25}$/, "usuario de Twitch en minúsculas, de 3 a 25 caracteres"),
-		}),
-		youtube: z.object({
-			handle: z.string().regex(/^@[\w.-]{3,30}$/, "handle de YouTube con @, como @jotis_1"),
-		}),
-		tagline: uiText,
-		description: z.array(uiText).min(1).max(4),
-		/** Textos propios de la web: qué es (portada) y la línea del pie. */
-		site: z.object({ intro: uiText, footer: uiText }),
-		/** «Cómo va un directo» en la portada: los cuatro pasos, en este orden. */
-		journey: z.object({ before: step, game: step, chatting: step, after: step }),
-		schedule: z
-			.object({
-				start: time,
-				end: time,
-				days: z.array(z.enum(DAYS)).optional(),
-				zone: uiText,
-			})
-			.refine((h) => h.start !== h.end, { message: "el inicio y el fin no pueden ser la misma hora" }),
-		/** Qué se emite: «Juegos», «Just Chatting». */
-		streams: z.array(uiText).min(1),
-		banner: z.object({ eyebrow: uiText }),
-		socials: z.array(social).min(1),
-		rules: z.array(uiText).min(1).max(5),
-		panels: z.array(panel).min(1).max(10),
-		scenes: z.object({ starting: scene, brb: scene, ending: scene, offline: scene }),
-		alerts: z.object({
-			follow: alertPhrase,
-			sub: alertPhrase,
-			resub: alertPhrase,
-			gift: alertPhrase,
-			raid: alertPhrase,
-			bits: alertPhrase,
-		}),
-		camera: z.object({ name: uiText }),
-		chat: z.object({ hidden: z.array(z.string().trim().toLowerCase()).default([]) }),
-	})
-	.superRefine((p, ctx) => {
-		const slugs = p.panels.map((x) => x.slug);
-		slugs.forEach((s, i) => {
-			if (slugs.indexOf(s) !== i)
-				ctx.addIssue({
-					code: "custom",
-					path: ["panels", i, "slug"],
-					message: `slug repetido: «${s}»`,
-				});
-		});
-		const networks = p.socials.map((r) => r.network);
-		networks.forEach((r, i) => {
-			if (networks.indexOf(r) !== i)
-				ctx.addIssue({
-					code: "custom",
-					path: ["socials", i, "network"],
-					message: `red repetida: «${r}»`,
-				});
-		});
+const profileObject = z.object({
+	/** Nombre con el que se presenta el canal: "Jotis". */
+	name: uiText,
+	twitch: z.object({
+		login: z.string().regex(/^[a-z0-9_]{3,25}$/, "usuario de Twitch en minúsculas, de 3 a 25 caracteres"),
+	}),
+	youtube: z.object({
+		handle: z.string().regex(/^@[\w.-]{3,30}$/, "handle de YouTube con @, como @jotis_1"),
+	}),
+	tagline: uiText,
+	description: z.array(uiText).min(1).max(4),
+	/** Textos propios de la web: qué es (portada) y la línea del pie. */
+	site: z.object({ intro: uiText, footer: uiText }),
+	/** «Cómo va un directo» en la portada: los cuatro pasos, en este orden. */
+	journey: z.object({ before: step, game: step, chatting: step, after: step }),
+	schedule: z
+		.object({
+			start: time,
+			end: time,
+			days: z.array(z.enum(DAYS)).optional(),
+			zone: uiText,
+		})
+		.refine((h) => h.start !== h.end, { message: "el inicio y el fin no pueden ser la misma hora" }),
+	/** Qué se emite: «Juegos», «Just Chatting». */
+	streams: z.array(uiText).min(1),
+	banner: z.object({ eyebrow: uiText }),
+	socials: z.array(social).min(1),
+	rules: z.array(uiText).min(1).max(5),
+	panels: z.array(panel).min(1).max(10),
+	scenes: z.object({ starting: scene, brb: scene, ending: scene, offline: scene }),
+	alerts: z.object({
+		follow: alertPhrase,
+		sub: alertPhrase,
+		resub: alertPhrase,
+		gift: alertPhrase,
+		raid: alertPhrase,
+		bits: alertPhrase,
+	}),
+	camera: z.object({ name: uiText }),
+	chat: z.object({ hidden: z.array(z.string().trim().toLowerCase()).default([]) }),
+});
+
+/** Sin slugs de panel ni redes repetidas. */
+const noRepeats = (
+	p: { panels: { slug: string }[]; socials: { network: string }[] },
+	ctx: z.RefinementCtx,
+) => {
+	const slugs = p.panels.map((x) => x.slug);
+	slugs.forEach((s, i) => {
+		if (slugs.indexOf(s) !== i)
+			ctx.addIssue({
+				code: "custom",
+				path: ["panels", i, "slug"],
+				message: `slug repetido: «${s}»`,
+			});
 	});
+	const networks = p.socials.map((r) => r.network);
+	networks.forEach((r, i) => {
+		if (networks.indexOf(r) !== i)
+			ctx.addIssue({
+				code: "custom",
+				path: ["socials", i, "network"],
+				message: `red repetida: «${r}»`,
+			});
+	});
+};
+
+/**
+ * El perfil de cualquier canal, tal como lo usan el estudio y los overlays (design.md del cambio multi-channel-studio,
+ * decisión 4). Para un canal añadido desde «Cuentas», YouTube es opcional y qué se emite, las normas y los paneles
+ * pueden ir vacíos: empiezan así y se rellenan en Recursos.
+ */
+export const profileSchema = profileObject
+	.extend({
+		youtube: profileObject.shape.youtube.optional(),
+		streams: z.array(uiText),
+		rules: z.array(uiText).max(5),
+		panels: z.array(panel).max(10),
+	})
+	.superRefine(noRepeats);
+
+/**
+ * El perfil del canal principal (`content/channel.yaml` y sus cambios en el estudio): alimenta la web, así que tiene
+ * que tenerlo todo (specs/channel-profile, «Perfil de un canal añadido», «El principal sigue exigiéndolo todo»).
+ */
+export const repoProfileSchema = profileObject.superRefine(noRepeats);
 
 export type Profile = z.infer<typeof profileSchema>;
+export type RepoProfile = z.infer<typeof repoProfileSchema>;
 export type Day = (typeof DAYS)[number];

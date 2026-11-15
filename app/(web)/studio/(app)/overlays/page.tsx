@@ -10,7 +10,7 @@ import { effectivePhrases, readSettings } from "@/lib/alerts/settings";
 import { env } from "@/lib/env";
 import { canvasOf } from "@/lib/overlay/canvas";
 import { getOrCreateToken } from "@/lib/overlay/token";
-import { loadMainProfile } from "@/lib/profile";
+import { loadProfile } from "@/lib/profile";
 import { sceneFooter } from "@/lib/profile/schedule";
 import { store } from "@/lib/storage/redis";
 import { sourceOf } from "@/lib/studio/overlay-sources";
@@ -29,7 +29,8 @@ export default async function OverlaysPage({
 }) {
 	const session = await requirePageSession();
 	const q = await searchParams;
-	const profile = await loadMainProfile();
+	// El canal de la sesión: sus URLs, sus textos y sus frases (specs/obs-overlays, «Cada canal con lo suyo»).
+	const profile = await loadProfile(session.login);
 	const s = store();
 	const [token, settings, goals] = await Promise.all([
 		getOrCreateToken(s, session.channelId),

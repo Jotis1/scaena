@@ -925,6 +925,137 @@ test.describe("tarjeta de la meta", () => {
 });
 
 // specs/twitch-events, «Cuenta conectada con su foto».
+// specs/obs-overlays, «Cada canal con lo suyo»; specs/channel-profile, «Perfil de un canal añadido»;
+// specs/twitch-profile-assets, «Recursos del canal de la sesión».
+test.describe("canal añadido", () => {
+	const SUNARA_ID = "4242";
+	let sunara: StudioUser;
+	let page: Page;
+
+	test.beforeEach(async ({ browser, baseURL }) => {
+		sunara = await createStudioUser("sunara__", undefined, null, {
+			id: SUNARA_ID,
+			description: "Pinto en directo 🎨. A veces juego.",
+		});
+		const context = await browser.newContext();
+		await signInAs(context, sunara, baseURL as string);
+		page = await context.newPage();
+	});
+	test.afterEach(async () => {
+		await page.context().close();
+		await sunara.remove();
+	});
+
+	test("sus URLs llevan su usuario y su token, y su meta no sale en las de jotis_1", async ({
+		page: jotis,
+	}) => {
+		await page.goto("/studio/overlays?source=goal");
+		const url = page.getByRole("region", { name: "Meta", exact: true }).locator('[data-url="goal"]');
+		await expect(url).toHaveValue(/^\/overlay\/sunara__\/goal\?token=/);
+		const token = String(await redis("GET", `channel:${SUNARA_ID}:token`));
+
+		const r = await page.request.put("/api/studio/settings", {
+			data: { goal: { type: "follows", label: "Seguidores de Sunara", target: 50 }, current: 7 },
+		});
+		expect(r.status()).toBe(200);
+		const piece = await page.context().newPage();
+		await piece.goto(`/overlay/sunara__/goal?token=${token}`);
+		await expect(piece.getByText("Seguidores de Sunara", { exact: true })).toBeVisible();
+
+		// En el estudio de jotis_1 no está su meta, y su token no vale en los overlays de jotis_1.
+		await jotis.goto("/studio/overlays?source=goal");
+		await expect(jotis.getByText("Seguidores de Sunara")).toHaveCount(0);
+		const other = await page.context().newPage();
+		await other.goto(`/overlay/jotis_1/goal?token=${token}`);
+		await expect(other.getByText("Seguidores de Sunara")).toHaveCount(0);
+		await expect(other.getByRole("progressbar")).toHaveCount(0);
+	});
+
+	test("su Recursos empieza desde su Twitch, y lo que guarda no toca el de jotis_1", async ({
+		page: jotis,
+	}) => {
+		await page.goto("/studio/assets");
+		const editor = page.getByRole("region", { name: "Contenido del canal" });
+		await editor.getByRole("button", { name: "Lema y descripción", exact: true }).click();
+		await expect(editor.getByRole("textbox", { name: "Lema" })).toHaveValue("Pinto en directo.");
+		await editor.getByRole("button", { name: "Normas", exact: true }).click();
+		await expect(editor.getByRole("textbox", { name: "Norma 1" })).toHaveCount(0);
+
+		await jotis.goto("/studio/assets");
+		const mine = jotis.getByRole("region", { name: "Contenido del canal" });
+		await mine.getByRole("button", { name: "Lema y descripción", exact: true }).click();
+		await expect(mine.getByRole("textbox", { name: "Lema" })).not.toHaveValue("Pinto en directo.");
+	});
+});
+
+// specs/studio-accounts.
+test.describe("cuentas", () => {
+	const SUNARA_ID = "4242";
+	const sections = (p: Page) => p.getByRole("navigation", { name: "Secciones del estudio" });
+
+	test("el administrador ve «Cuentas» con la lista; una cuenta añadida no la ve y la API le da 403", async ({
+		page,
+		browser,
+		baseURL,
+	}) => {
+		const sunara = await createStudioUser("sunara__", undefined, null, { id: SUNARA_ID });
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto("/studio/overlays");
+		await sections(page).getByRole("link", { name: "Cuentas" }).click();
+		await expect(page).toHaveURL(/\/studio\/accounts$/);
+		const table = page.getByRole("table");
+		await expect(table).toContainText("sunara__");
+		await expect(table).toContainText("Administrador");
+		await expect(table.getByRole("button", { name: "Quitar acceso" })).toHaveCount(1);
+		const axe = await new AxeBuilder({ page }).analyze();
+		expect(axe.violations.map((v) => v.id)).toEqual([]);
+
+		const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+		await signInAs(context, sunara, baseURL as string);
+		const her = await context.newPage();
+		await her.goto("/studio/overlays");
+		await expect(sections(her).getByRole("link", { name: "Cuentas" })).toHaveCount(0);
+		await her.goto("/studio/accounts");
+		await expect(her).toHaveURL(/\/studio\/overlays$/);
+		expect((await her.request.get("/api/studio/accounts")).status()).toBe(403);
+		await context.close();
+		await sunara.remove();
+	});
+
+	test("quitarle el acceso la saca al momento; volver a añadirla le devuelve su meta", async ({
+		page,
+		browser,
+		baseURL,
+	}) => {
+		const sunara = await createStudioUser("sunara__", undefined, null, { id: SUNARA_ID });
+		const context = await browser.newContext();
+		await signInAs(context, sunara, baseURL as string);
+		const her = await context.newPage();
+		const goal = { goal: { type: "subs", label: "Subs de Sunara", target: 20 }, current: 3 };
+		expect((await her.request.put("/api/studio/settings", { data: goal })).status()).toBe(200);
+
+		await page.goto("/studio/accounts");
+		await page.getByRole("table").getByRole("button", { name: "Quitar acceso" }).click();
+		await page.getByRole("dialog").getByRole("button", { name: "Quitar acceso" }).click();
+		await expect(page.getByRole("table")).not.toContainText("sunara__");
+
+		await her.goto("/studio/overlays");
+		await expect(her).toHaveURL(/\/studio\/login$/);
+
+		// Vuelve a tener acceso (su fila otra vez) y entra de nuevo: su meta sigue ahí.
+		const back = await createStudioUser("sunara__", undefined, null, { id: SUNARA_ID });
+		const again = await browser.newContext();
+		await signInAs(again, back, baseURL as string);
+		const herAgain = await again.newPage();
+		await herAgain.goto("/studio/overlays?source=goal");
+		await expect(herAgain.getByText("Subs de Sunara").first()).toBeVisible();
+		await context.close();
+		await again.close();
+		await sunara.remove();
+		await back.remove();
+	});
+});
+
 test.describe("conexión", () => {
 	const card = (page: Page) => page.getByRole("region", { name: "Cuenta conectada" });
 
@@ -977,6 +1108,7 @@ test.describe("capturas del estudio", () => {
 		["guia", "/studio/guide"],
 		["recursos", "/studio/assets"],
 		["conexion", "/studio/connection"],
+		["cuentas", "/studio/accounts"],
 	] as const;
 	for (const scheme of ["light", "dark"] as const)
 		for (const [w, h] of [

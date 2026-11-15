@@ -5,6 +5,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "./db";
 import { env } from "./env";
+import { type ChannelRegistry, channelRegistry } from "./studio/channels";
 
 /** Permisos de solo lectura para recibir follows, suscripciones y bits por EventSub. */
 export const TWITCH_SCOPES = [
@@ -24,8 +25,10 @@ export interface AuthOptions {
 	secret: string;
 	clientId: string;
 	clientSecret: string;
-	/** Ids de Twitch que pueden entrar en el estudio (hoy, el de jotis_1). */
+	/** Administradores: los ids de Twitch de la configuración, que entran siempre (specs/studio-accounts). */
 	allowedIds: readonly string[];
+	/** Las cuentas añadidas desde «Cuentas»; por defecto, las de Postgres. Los tests pasan una en memoria. */
+	registry?: () => Promise<ChannelRegistry>;
 	/** Base de datos de better-auth; en producción, Prisma. Los tests pasan la de memoria. */
 	database: Parameters<typeof betterAuth>[0]["database"];
 }
@@ -40,18 +43,31 @@ export function createAuth(o: AuthOptions) {
 				clientId: o.clientId,
 				clientSecret: o.clientSecret,
 				scope: TWITCH_SCOPES,
-				// Se ejecuta en cada entrada, antes de crear o actualizar nada: una cuenta que no está en la lista
-				// no llega a tener usuario ni sesión, y una que se quita de la lista deja de poder entrar.
-				mapProfileToUser: (profile) => {
+				// Se ejecuta en cada entrada, antes de crear o actualizar nada: una cuenta que no es administradora ni
+				// está en «Cuentas» no llega a tener usuario ni sesión, y una que se quita deja de poder entrar
+				// (design.md del cambio multi-channel-studio, decisión 2). Al entrar, su fila se pone al día.
+				mapProfileToUser: async (profile) => {
 					const id = String(profile.sub);
-					if (!o.allowedIds.includes(id)) {
-						const login = String(profile.preferred_username ?? "");
-						// Los ids de Twitch son públicos: dejarlos en el registro permite ver al momento si la lista de
-						// permitidos (STUDIO_ALLOWED_TWITCH_IDS) no es la que se esperaba.
+					const login = String(profile.preferred_username ?? "");
+					const registry = await (o.registry ?? channelRegistry)();
+					const admin = o.allowedIds.includes(id);
+					if (!admin && !(await registry.byId(id))) {
+						// Los ids de Twitch son públicos: dejarlos en el registro permite ver al momento quién intentó entrar.
 						console.warn(
-							`Estudio: cuenta de Twitch rechazada, ${login} (${id}). Permitidos: ${o.allowedIds.join(", ") || "(ninguno)"}.`,
+							`Estudio: cuenta de Twitch rechazada, ${login} (${id}). Administradores: ${o.allowedIds.join(", ") || "(ninguno)"}.`,
 						);
 						throw new APIError("FORBIDDEN", { message: `${ERROR_NOT_ALLOWED}|${login}|${id}` });
+					}
+					try {
+						await registry.upsertSignIn({
+							twitchId: id,
+							login,
+							name: String(profile.preferred_username ?? login),
+							image: typeof profile.picture === "string" ? profile.picture : null,
+						});
+					} catch (e) {
+						// Que no poner al día la fila no deje sin entrar: se reintenta en la siguiente entrada.
+						console.error("Estudio: no se ha podido poner al día la cuenta:", e);
 					}
 					return {};
 				},

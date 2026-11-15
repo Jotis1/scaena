@@ -1,13 +1,13 @@
 import { Button } from "@jotis-me/react";
 import { ArrowRight } from "@untitledui/icons";
-import type { Profile } from "@/lib/profile";
+import type { RepoProfile } from "@/lib/profile";
 import type { Video } from "@/lib/youtube/client";
 import { videoPage } from "@/lib/youtube/videos";
 import { NoVideos } from "../videos/NoVideos";
 import { VideoLinkCard } from "../videos/VideoLinkCard";
 
 /** «Lo último en YouTube» (diseño: «Portada»): los tres últimos vídeos y el enlace a todos. */
-export function LatestVideos({ profile, videos }: { profile: Profile; videos: Video[] }) {
+export function LatestVideos({ profile, videos }: { profile: RepoProfile; videos: Video[] }) {
 	const latest = videoPage(videos, "all", 1).items.slice(0, 3);
 	return (
 		<section aria-labelledby="ultimo">

@@ -169,7 +169,7 @@ test.describe("contenido del canal", () => {
 		expect((await res.json()).profile.rules[0]).not.toContain("🎉");
 	});
 
-	test("volver a los valores por defecto deja el perfil del repositorio", async ({ page }) => {
+	test("volver a los valores por defecto deja el perfil como al principio", async ({ page }) => {
 		await page.goto("/studio/assets");
 		const original = await page.getByRole("article", { name: "Panel Normas" }).textContent();
 		await editor(page).getByRole("button", { name: "Normas", exact: true }).click();
@@ -178,9 +178,7 @@ test.describe("contenido del canal", () => {
 		await expect(editor(page).getByText(/^Guardado\./)).toBeVisible();
 		await editor(page).getByRole("button", { name: "Volver a los valores por defecto" }).click();
 		await page.getByRole("dialog").getByRole("button", { name: "Volver a los de por defecto" }).click();
-		await expect(
-			editor(page).getByText("Vuelve a estar como en el perfil del repositorio."),
-		).toBeVisible();
+		await expect(editor(page).getByText("Vuelve a estar con los valores por defecto.")).toBeVisible();
 		await page.reload();
 		expect(await page.getByRole("article", { name: "Panel Normas" }).textContent()).toBe(original);
 	});

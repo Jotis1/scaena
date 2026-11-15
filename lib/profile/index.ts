@@ -1,13 +1,16 @@
-// Acceso al perfil del canal: el YAML del repositorio con los cambios del estudio encima (specs/channel-profile,
-// «Contenido del canal en un solo sitio»; design.md del cambio studio-sidebar-twitch-goals-editable-profile, decisión 8).
+// Acceso al perfil de cada canal: unos valores por defecto con los cambios del estudio encima (specs/channel-profile,
+// «Contenido del canal en un solo sitio»). Para el canal principal, el YAML del repositorio; para uno añadido desde
+// «Cuentas», el que sale de su Twitch (design.md del cambio multi-channel-studio, decisiones 3 y 4).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cache } from "react";
 import { parse } from "yaml";
 import type { z } from "zod";
-import { type Profile, profileSchema } from "./schema";
+import { channelRegistry } from "../studio/channels";
+import { generatedProfile } from "./generated";
+import { type Profile, profileSchema, type RepoProfile, repoProfileSchema } from "./schema";
 
-export type { Day, Profile } from "./schema";
+export type { Day, Profile, RepoProfile } from "./schema";
 
 export const PROFILE_PATH = join(process.cwd(), "content", "channel.yaml");
 
@@ -39,25 +42,25 @@ function problemsOf(error: z.ZodError, data: unknown): string[] {
 }
 
 /** Lee y valida un perfil en YAML. Lanza `ProfileError` con un problema por campo. */
-export function parseProfile(yaml: string): Profile {
+export function parseProfile(yaml: string): RepoProfile {
 	let data: unknown;
 	try {
 		data = parse(yaml);
 	} catch (e) {
 		throw new ProfileError([`YAML mal formado: ${e instanceof Error ? e.message : String(e)}`]);
 	}
-	const r = profileSchema.safeParse(data);
+	const r = repoProfileSchema.safeParse(data);
 	if (!r.success) throw new ProfileError(problemsOf(r.error, data));
 	return r.data;
 }
 
-let repoCache: Profile | undefined;
+let repoCache: RepoProfile | undefined;
 
 /**
  * El perfil del repositorio, sin los cambios del estudio. Vale para lo que no se edita (el usuario de Twitch y el
  * handle de YouTube) y como valores por defecto de lo demás.
  */
-export function repoProfile(): Profile {
+export function repoProfile(): RepoProfile {
 	repoCache ??= parseProfile(readFileSync(PROFILE_PATH, "utf8"));
 	return repoCache;
 }
@@ -83,6 +86,13 @@ export interface LoadedProfile {
 
 const isEditable = (k: string): k is EditableKey => (EDITABLE_KEYS as readonly string[]).includes(k);
 
+/** El canal principal se valida con el esquema estricto, también al guardar: alimenta la web. */
+function schemaFor(base: Profile): typeof profileSchema {
+	return base.twitch.login === repoProfile().twitch.login
+		? (repoProfileSchema as unknown as typeof profileSchema)
+		: profileSchema;
+}
+
 /** Solo los campos editables de lo guardado; lo demás se ignora. */
 function editsOf(data: unknown): Record<string, unknown> {
 	if (!data || typeof data !== "object" || Array.isArray(data)) return {};
@@ -95,13 +105,14 @@ function editsOf(data: unknown): Record<string, unknown> {
  * del perfil validados»).
  */
 export function mergeProfile(base: Profile, data: unknown): LoadedProfile {
+	const schema = schemaFor(base);
 	const edits = editsOf(data);
 	const invalid = new Set<EditableKey>();
 	for (let i = 0; i <= EDITABLE_KEYS.length; i++) {
 		const kept = Object.fromEntries(
 			Object.entries(edits).filter(([k]) => !invalid.has(k as EditableKey)),
 		);
-		const r = profileSchema.safeParse({ ...base, ...kept });
+		const r = schema.safeParse({ ...base, ...kept });
 		if (r.success) return { profile: r.data, invalidFields: [...invalid] };
 		const bad = r.error.issues.map((x) => String(x.path[0])).filter(isEditable);
 		// Un error que no cae en ningún campo editable deja el perfil del repositorio tal cual.
@@ -128,7 +139,7 @@ export function validateEdits(base: Profile, input: unknown): { edits: ProfileEd
 		if (!isEditable(k)) fields[k] = "Este campo no se puede cambiar desde el estudio.";
 	if (Object.keys(fields).length > 0) throw new ProfileEditsError(fields);
 	const edits = input as Record<string, unknown>;
-	const r = profileSchema.safeParse({ ...base, ...edits });
+	const r = schemaFor(base).safeParse({ ...base, ...edits });
 	if (!r.success) {
 		for (const i of r.error.issues) fields[i.path.map(String).join(".")] ??= i.message;
 		throw new ProfileEditsError(fields);
@@ -160,16 +171,36 @@ export async function profileStore(): Promise<ProfileStore> {
 	return prismaProfileStore;
 }
 
-/** El perfil del repositorio del canal pedido. Hoy solo existe el configurado. */
-export function repoProfileOf(login: string): Profile {
-	const base = repoProfile();
-	if (login.toLowerCase() !== base.twitch.login)
-		throw new Error(`No hay perfil para el canal «${login}». El configurado es «${base.twitch.login}».`);
-	return base;
+/**
+ * Los valores por defecto del canal pedido: el YAML para el principal y el que sale de su Twitch para uno añadido
+ * desde «Cuentas». `null` si el login no es de ningún canal de Scaena.
+ */
+export async function baseProfileOf(login: string): Promise<Profile | null> {
+	const l = login.toLowerCase();
+	const main = repoProfile();
+	if (l === main.twitch.login) return main;
+	try {
+		const row = await (await channelRegistry()).byLogin(l);
+		return row ? generatedProfile(row) : null;
+	} catch (e) {
+		console.warn(
+			`Perfil: no se ha podido mirar si «${l}» es un canal (${e instanceof Error ? e.message : e}).`,
+		);
+		return null;
+	}
+}
+
+/** El login no es de ningún canal de Scaena. */
+export class UnknownProfileError extends Error {
+	constructor(login: string) {
+		super(`No hay perfil para el canal «${login}».`);
+		this.name = "UnknownProfileError";
+	}
 }
 
 async function load(login: string): Promise<LoadedProfile> {
-	const base = repoProfileOf(login);
+	const base = await baseProfileOf(login);
+	if (!base) throw new UnknownProfileError(login);
 	let data: unknown = null;
 	try {
 		data = await (await profileStore()).read(base.twitch.login);
@@ -188,12 +219,25 @@ async function load(login: string): Promise<LoadedProfile> {
 /** Perfil del canal con los cambios del estudio y los campos guardados que ya no valen. Una lectura por petición. */
 export const loadProfileWithIssues = cache((login: string) => load(login.toLowerCase()));
 
-/** Perfil del canal pedido, por su usuario de Twitch, con los cambios del estudio. */
+/** Perfil del canal pedido, por su usuario de Twitch, con los cambios del estudio. Lanza `UnknownProfileError`. */
 export async function loadProfile(login: string): Promise<Profile> {
 	return (await loadProfileWithIssues(login)).profile;
 }
 
-/** El canal configurado con sus cambios, para las páginas que no llevan canal en la URL (la web pública). */
-export async function loadMainProfile(): Promise<Profile> {
-	return loadProfile(repoProfile().twitch.login);
+/** Como `loadProfile`, pero `null` si el login no es de ningún canal de Scaena. */
+export async function findProfile(login: string): Promise<Profile | null> {
+	try {
+		return await loadProfile(login);
+	} catch (e) {
+		if (e instanceof UnknownProfileError) return null;
+		throw e;
+	}
+}
+
+/**
+ * El canal principal con sus cambios, para la web pública. Sus cambios se validan con el esquema estricto, así que
+ * lo tiene todo, YouTube incluido.
+ */
+export async function loadMainProfile(): Promise<RepoProfile> {
+	return (await loadProfile(repoProfile().twitch.login)) as RepoProfile;
 }

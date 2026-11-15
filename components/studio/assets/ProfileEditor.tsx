@@ -418,7 +418,7 @@ export function ProfileEditor({
 					{status === "saved"
 						? "Guardado. La web ya lo enseña; vuelve a descargar las imágenes para Twitch."
 						: status === "reset"
-							? "Vuelve a estar como en el perfil del repositorio."
+							? "Vuelve a estar con los valores por defecto."
 							: status === "failed"
 								? "No se ha guardado: mira el mensaje debajo de cada campo."
 								: ""}
@@ -429,7 +429,7 @@ export function ProfileEditor({
 				icon={RefreshCcw01}
 				color="warning"
 				title="¿Volver a los valores por defecto?"
-				description="Se borra todo lo que has cambiado aquí y el contenido vuelve a ser el del perfil del repositorio."
+				description="Se borra todo lo que has cambiado aquí y el contenido vuelve a los valores por defecto de tu canal."
 				onClose={() => setConfirming(false)}
 				actions={
 					<div className="flex w-full gap-3">

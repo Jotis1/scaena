@@ -33,10 +33,19 @@ function paragraphsOf(p: Profile, panel: Profile["panels"][number]): string[] {
 	return panel.paragraphs ?? [];
 }
 
+/**
+ * Los paneles que se pueden subir a Twitch. Uno sin nada que enseñar no sale: el de normas sin normas o el de redes
+ * sin más red que Twitch, como al empezar un canal añadido (specs/channel-profile, «Perfil de un canal añadido»).
+ */
 export function panelsOf(p: Profile): PanelData[] {
-	return p.panels.map((panel) => {
-		// La red de Twitch no se repite en un panel que ya está en Twitch.
-		const socials = linkedSocials(p).filter((s) => s.network !== "twitch");
+	// La red de Twitch no se repite en un panel que ya está en Twitch.
+	const socials = linkedSocials(p).filter((s) => s.network !== "twitch");
+	const visible = p.panels.filter(
+		(panel) =>
+			!(panel.from && paragraphsOf(p, panel).length === 0) &&
+			!(panel.rows === "socials" && socials.length === 0),
+	);
+	return visible.map((panel) => {
 		const rows =
 			panel.rows === "schedule"
 				? panelRows(p.schedule)

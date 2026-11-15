@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 import { PROFILE_ICONS } from "../icons";
+import { memoryChannelRegistry, setChannelRegistry } from "../studio/channels";
 import {
+	baseProfileOf,
+	findProfile,
 	loadProfile,
 	loadProfileWithIssues,
 	mergeProfile,
@@ -11,7 +14,6 @@ import {
 	ProfileError,
 	parseProfile,
 	repoProfile,
-	repoProfileOf,
 	setProfileStore,
 	validateEdits,
 } from ".";
@@ -141,14 +143,39 @@ describe("perfil del canal", () => {
 	});
 });
 
-describe("repoProfileOf", () => {
-	it("devuelve el perfil del canal configurado", () => {
-		expect(repoProfileOf("jotis_1").name).toBe("Jotis");
-		expect(repoProfileOf("Jotis_1").name).toBe("Jotis");
+// design.md del cambio multi-channel-studio, decisión 3.
+describe("perfil base de cada canal", () => {
+	afterEach(() => setChannelRegistry(undefined));
+	const SUNARA = {
+		twitchId: "4242",
+		login: "sunara__",
+		name: "Sunara",
+		image: null,
+		description: "Pinto y juego.",
+		addedBy: "1",
+	};
+
+	it("el principal, del repositorio, con cualquier mayúscula", async () => {
+		setChannelRegistry(memoryChannelRegistry());
+		expect((await baseProfileOf("jotis_1"))?.name).toBe("Jotis");
+		expect((await baseProfileOf("Jotis_1"))?.name).toBe("Jotis");
 	});
 
-	it("falla con otro canal", () => {
-		expect(() => repoProfileOf("otrocanal")).toThrow("No hay perfil para el canal «otrocanal»");
+	it("uno añadido, el que sale de su Twitch; uno desconocido, ninguno", async () => {
+		setChannelRegistry(memoryChannelRegistry([SUNARA]));
+		expect(await baseProfileOf("sunara__")).toMatchObject({
+			name: "Sunara",
+			tagline: "Pinto y juego.",
+			rules: [],
+		});
+		expect(await baseProfileOf("otrocanal")).toBeNull();
+	});
+
+	it("`findProfile` de un canal desconocido es `null`", async () => {
+		setChannelRegistry(memoryChannelRegistry());
+		setProfileStore({ read: async () => null, write: async () => {}, clear: async () => {} });
+		expect(await findProfile("otrocanal")).toBeNull();
+		setProfileStore(undefined);
 	});
 });
 

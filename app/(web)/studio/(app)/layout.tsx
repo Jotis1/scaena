@@ -18,7 +18,7 @@ export default async function StudioLayout({ children }: { children: ReactNode }
 			<div className="flex min-w-0 flex-auto flex-col lg:flex-row">
 				{/* La barra lateral llega hasta abajo: en escritorio, la columna la estira. */}
 				<div className="flex shrink-0 flex-col max-lg:w-full [&>nav]:flex-1">
-					<StudioSidebar />
+					<StudioSidebar admin={session.admin} />
 				</div>
 				<main className="flex w-full min-w-0 flex-auto flex-col">{children}</main>
 			</div>

@@ -26,3 +26,39 @@ export async function channelIdFromLogin(d: HelixDeps, login: string): Promise<s
 	await d.store.set(key, id, { ex: TTL_SEC });
 	return id;
 }
+
+/** Lo que enseña «Cuentas» de una cuenta de Twitch antes de darle acceso (specs/studio-accounts, «Añadir una cuenta»). */
+export interface TwitchUser {
+	id: string;
+	login: string;
+	name: string;
+	image: string | null;
+	description: string;
+}
+
+/** Usuarios de Twitch: letras, cifras y guiones bajos, de 4 a 25 caracteres. */
+export const TWITCH_LOGIN = /^\w{4,25}$/;
+
+/** Busca una cuenta de Twitch por su usuario; `null` si no existe o el usuario no es válido. */
+export async function twitchUserByLogin(d: HelixDeps, login: string): Promise<TwitchUser | null> {
+	const l = login.trim().replace(/^@/, "").toLowerCase();
+	if (!TWITCH_LOGIN.test(l)) return null;
+	const { data } = await helixJson<{
+		data: {
+			id: string;
+			login: string;
+			display_name: string;
+			description: string;
+			profile_image_url: string;
+		}[];
+	}>(d, `/users?login=${encodeURIComponent(l)}`);
+	const u = data[0];
+	if (!u) return null;
+	return {
+		id: u.id,
+		login: u.login,
+		name: u.display_name || u.login,
+		image: u.profile_image_url || null,
+		description: u.description ?? "",
+	};
+}

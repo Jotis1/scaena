@@ -102,7 +102,7 @@ Las páginas de la web y del estudio SHALL seguir el diseño aprobado y las regl
 
 #### Scenario: Pie de la web
 - **WHEN** se abre cualquier página de la web
-- **THEN** el pie tiene la columna "El canal" con Twitch, YouTube y Discord (si tiene enlace), la columna "Esta web" con "Inicio" y "Vídeos", y "Scaena es parte de jotis.me."
+- **THEN** el pie tiene la columna "El canal" con Twitch, YouTube y Discord (si tiene enlace), la columna "Esta web" con "Inicio", "Vídeos" y "Estudio", y "Scaena es parte de jotis.me."
 
 #### Scenario: Navegación con teclado
 - **WHEN** se recorre la portada con el tabulador
@@ -111,6 +111,10 @@ Las páginas de la web y del estudio SHALL seguir el diseño aprobado y las regl
 #### Scenario: Móvil
 - **WHEN** se abre la portada a 390 px de ancho
 - **THEN** la navegación se recoge, las secciones se apilan y no hay desplazamiento horizontal
+
+#### Scenario: Estudio en el pie
+- **WHEN** se abre la portada con una sesión del estudio abierta y, después, sin ella
+- **THEN** "Estudio" del pie lleva a Overlays con sesión y a la entrada del estudio sin ella, como el de la cabecera
 
 ### Requirement: Claro y oscuro
 Las páginas SHALL tener en la cabecera un único sitio para elegir el tema, con nombre accesible y tres opciones: "Claro", "Oscuro" y "Sistema". Sin sesión, es un selector desplegable cuyo botón mide lo mismo con cualquier tema. Con sesión, va dentro del menú de la cuenta. La elección de "Claro" u "Oscuro" SHALL recordarse entre visitas. Con "Sistema", o sin elección guardada, el tema SHALL seguir al sistema. El tema SHALL aplicarse antes de pintar, sin destello del contrario.
@@ -198,7 +202,7 @@ La cabecera de la web SHALL llevar un campo de búsqueda con nombre accesible. A
 - **THEN** se abre `/videos` con todos los vídeos
 
 ### Requirement: Navegación del estudio
-Las páginas del estudio SHALL llevar la cabecera de la web, con "Estudio" como página actual, y una sola barra de navegación más: una barra lateral con "Overlays", "Guía de uso", "Recursos" y "Conexión", con la actual marcada. MUST NOT haber una segunda barra horizontal bajo la cabecera. En el móvil, la barra lateral SHALL recogerse en un menú que se abre con un botón.
+Las páginas del estudio SHALL llevar la cabecera de la web, con "Estudio" como página actual, y una sola barra de navegación más: una barra lateral con "Overlays", "Guía de uso", "Recursos" y "Conexión", con la actual marcada. La barra lateral MUST NOT llevar un título que repita el estudio o la sección. MUST NOT haber una segunda barra horizontal bajo la cabecera. En el móvil, la barra lateral SHALL recogerse en un menú que se abre con un botón.
 
 #### Scenario: Cambiar de sección
 - **WHEN** en Overlays se pulsa "Conexión" en la barra lateral
@@ -219,6 +223,10 @@ Las páginas del estudio SHALL llevar la cabecera de la web, con "Estudio" como 
 #### Scenario: Estudio en el móvil
 - **WHEN** se abre Overlays a 390 px de ancho
 - **THEN** la barra lateral no ocupa la pantalla, un botón abre el menú con las cuatro secciones y la página no se desplaza en horizontal
+
+#### Scenario: Sin título repetido
+- **WHEN** se abre Overlays
+- **THEN** la barra lateral empieza con sus secciones y no enseña «Estudio · Overlays» ni otro título
 
 ### Requirement: Entrada al estudio desde la web
 La cabecera de la web SHALL enseñar "Estudio" a todo el mundo. Sin sesión, SHALL llevar a la entrada con Twitch. Con sesión, SHALL llevar a Overlays. Entrar en el estudio SHALL seguir limitado a la cuenta autorizada.
