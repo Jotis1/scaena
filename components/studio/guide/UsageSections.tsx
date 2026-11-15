@@ -118,6 +118,7 @@ export function ManualSteps() {
 					"En la escena de juego, aplica la máscara a la cámara para que no asome por las esquinas.",
 					"Si quieres usar una meta de Twitch, créala en el panel de creador de Twitch y elígela en «Qué meta sale», en la meta de Overlays. Cuando termina en Twitch, vuelve a salir tu primera meta de Scaena.",
 					"Si rotas el token, vuelve a copiar y pegar las URL que lo llevan.",
+					"Las URL llevan tu usuario de Twitch: si lo cambias, vuelve a copiarlas y pegarlas en OBS.",
 				]}
 			/>
 		</Section>

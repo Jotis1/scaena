@@ -7,7 +7,7 @@ Recibir de Twitch los eventos del canal (follows, suscripciones, renovaciones, r
 ## Requirements
 
 ### Requirement: Conexión del canal
-La entrada al estudio con Twitch SHALL pedir los permisos mínimos para leer follows, suscripciones, bits y metas del creador. Desde la página de conexión del estudio, el dueño del canal SHALL poder dar de alta y borrar las suscripciones de eventos del canal. Si a la sesión le falta un permiso, la página de conexión SHALL decir cuál falta y ofrecer volver a entrar con Twitch.
+La entrada al estudio con Twitch SHALL pedir los permisos mínimos para leer follows, suscripciones, bits y metas del creador. Desde la página de conexión del estudio, el dueño del canal SHALL poder dar de alta y borrar las suscripciones de eventos del canal. Si al token actual de la sesión le falta un permiso, según Twitch, la página de conexión SHALL decir cuál falta y ofrecer volver a entrar con Twitch; si Twitch no contesta, no SHALL avisar.
 
 #### Scenario: Primera conexión
 - **WHEN** el dueño del canal ha entrado con Twitch y pulsa "Conectar eventos"
@@ -20,6 +20,14 @@ La entrada al estudio con Twitch SHALL pedir los permisos mínimos para leer fol
 #### Scenario: Falta el permiso de metas
 - **WHEN** el dueño del canal entró antes de pedirse el permiso de metas y abre la página de conexión
 - **THEN** la página dice que falta el permiso para leer las metas y ofrece «Volver a entrar con Twitch»
+
+#### Scenario: Tras volver a entrar
+- **WHEN** al dueño del canal le faltaba el permiso de metas, vuelve a entrar con Twitch dándolo y abre la página de conexión
+- **THEN** la página ya no dice que falte ningún permiso
+
+#### Scenario: Twitch no contesta
+- **WHEN** Twitch no contesta al preguntar los permisos del token y se abre la página de conexión
+- **THEN** la página no avisa de ningún permiso
 
 ### Requirement: Aviso de eventos sin conectar
 Mientras los eventos del canal no lleguen del todo (sin conectar, con alguna suscripción revocada o sin dar de alta), las páginas de overlays, guía de uso y recursos del estudio SHALL mostrar, encima del contenido de la página, un aviso que diga qué pasa y lleve a la página de conexión. El aviso MUST NOT aparecer si todas las suscripciones están activas o verificándose, ni si Twitch no responde al consultarlas.
@@ -151,3 +159,14 @@ El sistema SHALL guardar todas las metas del creador activas del canal, cada una
 #### Scenario: Tipos de meta de Twitch
 - **WHEN** Twitch avisa de una meta de tipo `new_cheerer`
 - **THEN** la meta se muestra con su descripción y la unidad «personas»
+
+### Requirement: Cuenta conectada con su foto
+En Conexión, la tarjeta «Cuenta conectada» SHALL enseñar la foto de perfil de la cuenta de Twitch de la sesión, la misma que la cabecera. Solo si Twitch no da foto SHALL enseñar la inicial del nombre.
+
+#### Scenario: Con foto
+- **WHEN** la cuenta de Twitch de la sesión tiene foto de perfil y se abre Conexión
+- **THEN** la tarjeta «Cuenta conectada» enseña esa foto y no la inicial
+
+#### Scenario: Sin foto
+- **WHEN** la cuenta de Twitch de la sesión no tiene foto y se abre Conexión
+- **THEN** la tarjeta enseña la inicial del nombre

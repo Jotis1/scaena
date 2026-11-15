@@ -37,6 +37,8 @@ export async function createStudioUser(
 	scopes = ALL_SCOPES,
 	/** Foto de perfil de Twitch; sin ella, la cuenta sale con la inicial. */
 	image: string | null = null,
+	/** Otra cuenta, añadida desde «Cuentas» (no administradora): su id de Twitch y su descripción. */
+	added?: { id: string; description?: string },
 ): Promise<StudioUser> {
 	const db = new pg.Client({ connectionString: E2E_DATABASE_URL });
 	await db.connect();
@@ -51,7 +53,22 @@ export async function createStudioUser(
 		);
 		await db.query(
 			'insert into account (id, "accountId", "providerId", "userId", scope, "createdAt", "updatedAt") values ($1, $2, $3, $4, $5, $6, $6)',
-			[`${userId}-acc`, CHANNEL_ID, "twitch", userId, scopes.join(","), now],
+			[`${userId}-acc`, added?.id ?? CHANNEL_ID, "twitch", userId, scopes.join(","), now],
+		);
+		// Su fila de «Cuentas»: la de un administrador se crea al entrar; la de una añadida lleva quién la añadió.
+		await db.query(
+			`insert into studio_channel ("twitchId", login, name, image, description, "addedBy", "updatedAt")
+			 values ($1, $2, $3, $4, $5, $6, $7)
+			 on conflict ("twitchId") do update set login = excluded.login, name = excluded.name, image = excluded.image`,
+			[
+				added?.id ?? CHANNEL_ID,
+				name.toLowerCase(),
+				name,
+				image,
+				added?.description ?? "",
+				added ? CHANNEL_ID : null,
+				now,
+			],
 		);
 		await db.query(
 			'insert into session (id, token, "userId", "expiresAt", "createdAt", "updatedAt") values ($1, $2, $3, $4, $5, $5)',
@@ -68,6 +85,8 @@ export async function createStudioUser(
 			const c = new pg.Client({ connectionString: E2E_DATABASE_URL });
 			await c.connect();
 			await c.query('delete from "user" where id = $1', [userId]);
+			// La fila de una cuenta añadida se va con ella; la del administrador la comparten los tests.
+			if (added) await c.query('delete from studio_channel where "twitchId" = $1', [added.id]);
 			await c.end();
 		},
 	};

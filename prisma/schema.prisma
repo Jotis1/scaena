@@ -83,3 +83,19 @@ model ChannelProfile {
 
   @@map("channel_profile")
 }
+
+// Cuentas con acceso al estudio y la foto de su Twitch (specs/studio-accounts; design.md del cambio
+// multi-channel-studio, decisión 1). Los administradores también tienen fila: se crea al entrar. La de una cuenta
+// añadida desde «Cuentas» lleva quién la añadió; quitarle el acceso borra la fila, no sus datos.
+model StudioChannel {
+  twitchId    String   @id
+  login       String   @unique
+  name        String
+  image       String?
+  description String   @default("")
+  addedBy     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("studio_channel")
+}

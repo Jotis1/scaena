@@ -18,4 +18,10 @@ describe("barra lateral del estudio", () => {
 		// Sin título que repita el estudio o la sección.
 		expect(html).not.toContain("Estudio ·");
 	});
+
+	// specs/studio-accounts, «Administradores».
+	it("«Cuentas» solo para los administradores", () => {
+		expect(renderToStaticMarkup(<StudioSidebar />)).not.toContain("Cuentas");
+		expect(renderToStaticMarkup(<StudioSidebar admin />)).toContain('href="/studio/accounts"');
+	});
 });

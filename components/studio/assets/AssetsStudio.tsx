@@ -39,7 +39,7 @@ export function AssetsStudio({
 				<Alert
 					color="warning"
 					title="Hay cambios guardados que ya no valen"
-					description={`${invalidFields.map((f) => FIELD_NAMES[f]).join(", ")}: se usan los del perfil del repositorio hasta que los vuelvas a guardar.`}
+					description={`${invalidFields.map((f) => FIELD_NAMES[f]).join(", ")}: se usan los valores por defecto hasta que los vuelvas a guardar.`}
 				/>
 			) : null}
 			<ProfileEditor

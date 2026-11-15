@@ -4,6 +4,8 @@ import { getSessionCookie } from "better-auth/cookies";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "../auth";
+import { env } from "../env";
+import { channelRegistry } from "./channels";
 
 export interface StudioSession {
 	name: string;
@@ -11,6 +13,10 @@ export interface StudioSession {
 	image?: string;
 	/** Id de Twitch de la cuenta: el canal del estudio. */
 	channelId: string;
+	/** Usuario de Twitch del canal: el de sus overlays (`/overlay/<login>/…`) y su perfil. */
+	login: string;
+	/** Administrador (su id está en la configuración): ve «Cuentas» (specs/studio-accounts, «Administradores»). */
+	admin: boolean;
 }
 
 export async function readSession(requestHeaders: Headers): Promise<StudioSession | null> {
@@ -21,13 +27,18 @@ export async function readSession(requestHeaders: Headers): Promise<StudioSessio
 	if (!session) return null;
 	const accounts = await a.api.listUserAccounts({ headers: requestHeaders });
 	const twitch = accounts.find((c) => c.providerId === "twitch");
-	return twitch
-		? {
-				name: session.user.name,
-				image: session.user.image ?? undefined,
-				channelId: twitch.accountId,
-			}
-		: null;
+	if (!twitch) return null;
+	const admin = env().STUDIO_ALLOWED_TWITCH_IDS.includes(twitch.accountId);
+	const row = await (await channelRegistry()).byId(twitch.accountId);
+	// Una cuenta añadida a la que se le ha quitado el acceso ya no vale, aunque su sesión siga en la base de datos.
+	if (!admin && !row) return null;
+	return {
+		name: session.user.name,
+		image: session.user.image ?? undefined,
+		channelId: twitch.accountId,
+		login: row?.login ?? session.user.name.toLowerCase(),
+		admin,
+	};
 }
 
 /** En una página del estudio: la sesión o, si no hay, a la entrada. */

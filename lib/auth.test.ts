@@ -1,6 +1,7 @@
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAuth, ERROR_NOT_ALLOWED, handleAuth } from "./auth";
+import { type ChannelRegistry, memoryChannelRegistry } from "./studio/channels";
 
 // Twitch simulado: el endpoint de tokens devuelve un id_token sin firmar (better-auth solo lo decodifica).
 const BASE = "http://localhost:3000";
@@ -31,7 +32,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-function newAuth() {
+function newAuth(registry: ChannelRegistry = memoryChannelRegistry()) {
 	const data: Record<string, Record<string, unknown>[]> = {
 		user: [],
 		session: [],
@@ -44,9 +45,10 @@ function newAuth() {
 		clientId: "cid",
 		clientSecret: "csecret",
 		allowedIds: [ALLOWED],
+		registry: async () => registry,
 		database: memoryAdapter(data),
 	});
-	return { auth, data };
+	return { auth, data, registry };
 }
 
 const cookiesOf = (res: Response) =>
@@ -58,13 +60,14 @@ const cookiesOf = (res: Response) =>
 /** Hace el viaje completo: pedir el inicio de sesión y volver de Twitch con un código. */
 async function signIn(
 	auth: ReturnType<typeof newAuth>["auth"],
-	account: { sub: string; email: string; name: string },
+	account: { sub: string; email: string; name: string; picture?: string },
 ) {
 	twitchProfile = {
 		sub: account.sub,
 		email: account.email,
 		email_verified: true,
 		preferred_username: account.name,
+		...(account.picture ? { picture: account.picture } : {}),
 	};
 	const start = await auth.handler(
 		new Request(`${BASE}/api/auth/sign-in/social`, {
@@ -110,6 +113,53 @@ describe("entrada al estudio con Twitch", () => {
 		expect(data.user).toHaveLength(0);
 		expect(data.session).toHaveLength(0);
 		expect(data.account).toHaveLength(0);
+	});
+
+	// specs/studio-accounts y specs/obs-overlays, «Entra una cuenta añadida».
+	it("una cuenta añadida desde «Cuentas» entra; al quitarla, deja de poder entrar", async () => {
+		const registry = memoryChannelRegistry([
+			{
+				twitchId: "4242",
+				login: "sunara__",
+				name: "sunara__",
+				image: null,
+				description: "Pinto y juego",
+				addedBy: ALLOWED,
+			},
+		]);
+		const { auth } = newAuth(registry);
+		const res = await signIn(auth, { sub: "4242", email: "s@ejemplo.es", name: "sunara__" });
+		expect(res.headers.get("location")).toBe("/studio/overlays");
+		expect(
+			await auth.api.getSession({ headers: new Headers({ cookie: cookiesOf(res) }) }),
+		).not.toBeNull();
+		// Entrar no le quita quién la añadió ni la descripción.
+		expect(await registry.byId("4242")).toMatchObject({ addedBy: ALLOWED, description: "Pinto y juego" });
+		await registry.remove("4242");
+		const again = await signIn(auth, { sub: "4242", email: "s@ejemplo.es", name: "sunara__" });
+		expect(again.headers.get("location")).toMatch(new RegExp(`error=${ERROR_NOT_ALLOWED}`));
+	});
+
+	it("el administrador tiene su fila al entrar, y un cambio de usuario o de foto queda al día", async () => {
+		const { auth, registry } = newAuth();
+		await signIn(auth, {
+			sub: ALLOWED,
+			email: "j@ejemplo.es",
+			name: "jotis_1",
+			picture: "https://x/a.png",
+		});
+		expect(await registry.byId(ALLOWED)).toMatchObject({
+			login: "jotis_1",
+			image: "https://x/a.png",
+			addedBy: null,
+		});
+		await signIn(auth, {
+			sub: ALLOWED,
+			email: "j@ejemplo.es",
+			name: "Jotis_2",
+			picture: "https://x/b.png",
+		});
+		expect(await registry.byId(ALLOWED)).toMatchObject({ login: "jotis_2", image: "https://x/b.png" });
 	});
 
 	it("una cookie manipulada no da sesión", async () => {

@@ -10,6 +10,8 @@ export default async function globalSetup() {
 		await c.query(`delete from "user" where id like 'e2e-%'`);
 		// El perfil editado en Recursos: cada pasada empieza con el del repositorio.
 		await c.query("delete from channel_profile");
+		// Las cuentas con acceso: cada pasada empieza sin ninguna; cada test crea la suya.
+		await c.query("delete from studio_channel");
 	} catch (e) {
 		throw new Error(
 			`El Postgres de los tests no responde (${E2E_DATABASE_URL}): ${e instanceof Error ? e.message : e}. ` +

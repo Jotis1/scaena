@@ -18,6 +18,6 @@ export function linkedSocials(p: Profile): LinkedSocial[] {
 /** Lo que se ve junto al nombre: `twitch.tv/jotis_1`, `@jotis_1` o la invitación. */
 export function socialHandle(p: Profile, s: LinkedSocial): string {
 	if (s.network === "twitch") return `twitch.tv/${p.twitch.login}`;
-	if (s.network === "youtube") return p.youtube.handle;
+	if (s.network === "youtube") return p.youtube?.handle ?? s.url.replace(/^https?:\/\/(www\.)?/, "");
 	return s.url.replace(/^https?:\/\/(www\.)?/, "");
 }
