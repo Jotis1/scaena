@@ -20,7 +20,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
 				<SiteHeader account={session ? { name: session.name, image: session.image } : undefined} />
 				<LiveBanner login={profile.twitch.login} />
 				<main className="flex-auto">{children}</main>
-				<SiteFooter />
+				<SiteFooter signedIn={Boolean(session)} />
 			</div>
 		</LiveStatusProvider>
 	);

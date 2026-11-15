@@ -6,19 +6,21 @@ import { authClient } from "@/lib/auth-client";
 import { SCOPE_DESCRIPTIONS } from "@/lib/studio/connection";
 
 /**
- * Permisos que faltan en la sesión (specs/twitch-events, «Conexión del canal»): los pidió Scaena después de que la
- * cuenta entrase, como el de las metas. Volver a entrar con Twitch los pide y vuelve aquí.
+ * Permisos que le faltan al token de la sesión, según Twitch (specs/twitch-events, «Conexión del canal»). Volver a
+ * entrar con Twitch los pide y vuelve aquí. El texto dice cómo están las cosas, no qué ha cambiado.
  */
 export function ScopeNotice({ missing }: { missing: string[] }) {
 	const [loading, setLoading] = useState(false);
 	if (missing.length === 0) return null;
-	const what = missing.map((s) => (SCOPE_DESCRIPTIONS[s] ?? s).toLowerCase()).join(", ");
+	// Solo la primera letra en minúscula: «ver tus metas de Twitch», no «de twitch».
+	const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+	const what = missing.map((s) => lower(SCOPE_DESCRIPTIONS[s] ?? s)).join(", ");
 	return (
 		<div role="alert">
 			<Alert
 				color="warning"
 				title={missing.length === 1 ? "Falta un permiso de Twitch" : "Faltan permisos de Twitch"}
-				description={`Scaena ahora pide permiso para ${what}. Hasta que vuelvas a entrar, eso no llega a los overlays. Después, pulsa «Conectar eventos».`}
+				description={`Para ${what} hace falta un permiso que tu sesión no tiene. Vuelve a entrar con Twitch y después pulsa «Conectar eventos».`}
 				actions={
 					<Button
 						hierarchy="secondary"

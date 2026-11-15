@@ -50,4 +50,4 @@
 
 - [x] 9.1 Pasar los tests unitarios y e2e, Biome, `check:colors`, `tsc`, el build y `openspec validate --strict` del cambio.
 - [x] 9.2 Subir la versión a 0.4.0 en `package.json`, abrir la PR, mergear en `main` y crear y subir la etiqueta anotada `v0.4.0`.
-- [ ] 9.3 Después del despliegue, avisar de que hay que actualizar una vez las fuentes de la meta y de las escenas en OBS y de abrir Overlays para que se carguen las metas de Twitch.
+- [x] 9.3 Después del despliegue, avisar de que hay que actualizar una vez las fuentes de la meta y de las escenas en OBS y de abrir Overlays para que se carguen las metas de Twitch.

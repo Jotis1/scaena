@@ -9,8 +9,8 @@ const ICONS = { overlays: LayersThree01, guide: BookOpen01, assets: Image01, con
 
 /**
  * Barra lateral del estudio (specs/channel-site, «Navegación del estudio»): las cuatro secciones, la actual marcada,
- * bajo la cabecera de la web. La cuenta va en la cabecera (`AccountMenu`), no aquí. En pantallas estrechas se recoge
- * y un botón la abre; su barra enseña la sección actual.
+ * bajo la cabecera de la web. Sin título: la cabecera ya marca «Estudio» y cada página tiene el suyo. La cuenta va en
+ * la cabecera (`AccountMenu`), no aquí. En pantallas estrechas se recoge y un botón la abre.
  */
 export function StudioSidebar() {
 	const current = studioPageOf(usePathname());
@@ -18,7 +18,8 @@ export function StudioSidebar() {
 		<SidebarNav
 			type="simple"
 			responsive
-			brand={<span className="text-md">{current ? `Estudio · ${current.label}` : "Estudio"}</span>}
+			// En el móvil, la franja que abre el menú dice qué abre; en escritorio no hay título (la cabecera ya marca «Estudio»).
+			brand={<span className="text-md lg:hidden">Secciones del estudio</span>}
 			labels={{ nav: "Secciones del estudio", menu: "Secciones del estudio" }}
 			items={STUDIO_PAGES.map((p) => ({
 				label: p.label,

@@ -7,7 +7,6 @@ import {
 	activeProgress,
 	connectionView,
 	eventsNotice,
-	missingScopes,
 	revokedNotice,
 	SCOPE_DESCRIPTIONS,
 	SUBSCRIPTION_FEEDS,
@@ -94,13 +93,5 @@ describe("cuenta de la conexión", () => {
 		expect(SUBSCRIPTION_FEEDS["channel.raid"]).toBe("Alertas y eventos");
 		expect(SUBSCRIPTION_FEEDS["stream.online"]).toBe("Estado");
 		for (const scope of TWITCH_SCOPES) expect(SCOPE_DESCRIPTIONS[scope], scope).toBeTruthy();
-	});
-
-	// specs/twitch-events, «Conexión del canal», «Falta el permiso de metas».
-	it("una sesión de antes de pedir las metas: falta `channel:read:goals`", () => {
-		const before = ["moderator:read:followers", "channel:read:subscriptions", "bits:read"];
-		expect(missingScopes(before, TWITCH_SCOPES)).toEqual(["channel:read:goals"]);
-		expect(missingScopes(TWITCH_SCOPES, TWITCH_SCOPES)).toEqual([]);
-		expect(SCOPE_DESCRIPTIONS["channel:read:goals"]).toBeTruthy();
 	});
 });

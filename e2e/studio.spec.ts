@@ -54,6 +54,8 @@ test.describe("armazón", () => {
 		await page.setViewportSize({ width: 1280, height: 900 });
 		for (const path of ["/studio/overlays", "/studio/guide", "/studio/assets", "/studio/connection"]) {
 			await page.goto(path);
+			// Sin título repetido en la barra lateral (specs/channel-site, «Sin título repetido»).
+			await expect(page.getByText(/^Estudio · /), path).toHaveCount(0);
 			const header = page.getByRole("banner");
 			await expect(header.getByRole("link", { name: "Estudio" }).first(), path).toHaveAttribute(
 				"aria-current",
@@ -139,6 +141,10 @@ test.describe("armazón", () => {
 		);
 		await expect(account(page)).toBeVisible();
 		await expect(sections(page)).toHaveCount(0);
+		await expect(page.locator("footer").getByRole("link", { name: "Estudio" })).toHaveAttribute(
+			"href",
+			"/studio/overlays",
+		);
 	});
 
 	test("con una cookie de sesión inventada no se ve nada del estudio", async ({ browser, baseURL }) => {
@@ -400,6 +406,30 @@ test.describe("overlays", () => {
 		const preview = page.locator('[data-preview="scene/chatting"] [role="progressbar"]');
 		await expect(preview).toHaveAttribute("aria-valuemax", "500");
 		expect(String(await redis("GET", `channel:${CHANNEL_ID}:settings`))).toContain('"target":500');
+	});
+
+	test("«Piezas / Escenas»: la pestaña elegida deja 4 px de marco por los cuatro lados", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		for (const [path, name] of [
+			["/studio/overlays?source=chat", "Piezas"],
+			["/studio/overlays?source=game", "Escenas"],
+		] as const) {
+			await page.goto(path);
+			const list = page.getByRole("tablist", { name: "Tipo de fuente" });
+			const frame = await list.boundingBox();
+			const tab = await list.getByRole("tab", { name: new RegExp(`^${name}`) }).boundingBox();
+			if (!frame || !tab) throw new Error("sin medidas");
+			const gaps = [
+				tab.x - frame.x,
+				tab.y - frame.y,
+				frame.x + frame.width - (tab.x + tab.width),
+				frame.y + frame.height - (tab.y + tab.height),
+			].map((n) => Math.round(n));
+			for (const g of name === "Piezas" ? [gaps[0], gaps[1], gaps[3]] : gaps.slice(1))
+				expect(g, path).toBe(4);
+		}
 	});
 
 	test("axe sin errores en una pieza y en una escena", async ({ page }) => {
@@ -671,6 +701,51 @@ test.describe("meta guardada en vivo", () => {
 		await expect(bar(piece)).toHaveAttribute("aria-valuemax", "50");
 	});
 
+	// specs/obs-overlays, «Estado al guardar qué meta sale».
+	test("elegir otra meta se ve al momento, con «Guardando…» y luego «Guardado»", async ({ page }) => {
+		await saveGoal(page, { goal: SUBS });
+		await saveGoal(page, { goal: FOLLOWS });
+		await page.goto("/studio/overlays?source=goal");
+		const meta = card(page);
+		// El servidor tarda: el cambio ya se ve y se dice que se está guardando.
+		await page.route("**/api/studio/settings", async (route) => {
+			if (route.request().method() === "PUT") await new Promise((r) => setTimeout(r, 1500));
+			await route.continue();
+		});
+		await meta.getByRole("button", { name: /Qué meta sale/ }).click();
+		await page.getByRole("option", { name: /^Seguidores/ }).click();
+		await expect(meta.getByRole("button", { name: /Qué meta sale/ })).toContainText("Seguidores");
+		await expect(meta.getByRole("status").filter({ hasText: "Guardando…" })).toBeVisible();
+		await expect(page.locator('[data-preview="goal"] [role="progressbar"]').first()).toHaveAttribute(
+			"aria-valuemax",
+			"50",
+		);
+		await expect(meta.getByRole("status").filter({ hasText: "Guardado" })).toBeVisible({
+			timeout: 10_000,
+		});
+		const saved = JSON.parse(String(await redis("GET", `channel:${CHANNEL_ID}:settings`)));
+		expect(saved.show.kind).toBe("one");
+	});
+
+	test("si no se guarda, vuelve a la meta de antes y dice por qué", async ({ page }) => {
+		await saveGoal(page, { goal: SUBS });
+		await saveGoal(page, { goal: FOLLOWS });
+		await page.goto("/studio/overlays?source=goal");
+		const meta = card(page);
+		await page.route("**/api/studio/settings", (route) =>
+			route.request().method() === "PUT"
+				? route.fulfill({
+						status: 400,
+						json: { error: "x", fields: { show: "Esa meta ya no existe." } },
+					})
+				: route.continue(),
+		);
+		await meta.getByRole("button", { name: /Qué meta sale/ }).click();
+		await page.getByRole("option", { name: /^Seguidores/ }).click();
+		await expect(meta.getByRole("alert").filter({ hasText: "Esa meta ya no existe." })).toBeVisible();
+		await expect(meta.getByRole("button", { name: /Qué meta sale/ })).toContainText("Subs del mes");
+	});
+
 	test("como mucho cinco metas, y la última no se borra", async ({ page }) => {
 		const first = await saveGoal(page, { goal: SUBS });
 		await page.goto("/studio/overlays?source=goal");
@@ -846,6 +921,48 @@ test.describe("tarjeta de la meta", () => {
 		await card.getByRole("button", { name: "Añadir meta" }).click();
 		await expect(card.getByText("El objetivo tiene que ser mayor que cero.")).toBeVisible();
 		expect(await redis("GET", `channel:${CHANNEL_ID}:settings`)).toBeNull();
+	});
+});
+
+// specs/twitch-events, «Cuenta conectada con su foto».
+test.describe("conexión", () => {
+	const card = (page: Page) => page.getByRole("region", { name: "Cuenta conectada" });
+
+	test("con foto en Twitch, la cuenta sale con su foto y no con la inicial", async ({
+		browser,
+		baseURL,
+	}) => {
+		const withPhoto = await createStudioUser("jotis_1", undefined, "/favicon.svg");
+		const context = await browser.newContext();
+		await signInAs(context, withPhoto, baseURL as string);
+		const page = await context.newPage();
+		await page.goto("/studio/connection");
+		const img = card(page).locator("img");
+		await expect(img).toHaveAttribute("src", /favicon\.svg/);
+		await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+		await expect(card(page).getByText("J", { exact: true })).toHaveCount(0);
+		await context.close();
+		await withPhoto.remove();
+	});
+
+	// specs/twitch-events, «Conexión del canal», «Twitch no contesta»: en las pruebas no hay Twitch al que preguntar
+	// los permisos del token, así que no hay aviso aunque la cuenta guardada diga que faltan.
+	test("si Twitch no contesta sobre los permisos, no hay aviso", async ({ browser, baseURL }) => {
+		const old = await createStudioUser("jotis_1", ["bits:read"]);
+		const context = await browser.newContext();
+		await signInAs(context, old, baseURL as string);
+		const page = await context.newPage();
+		await page.goto("/studio/connection");
+		await expect(card(page)).toBeVisible();
+		await expect(page.getByText(/Falta(n)? (un permiso|permisos) de Twitch/)).toHaveCount(0);
+		await context.close();
+		await old.remove();
+	});
+
+	test("sin foto, la inicial", async ({ page }) => {
+		await page.goto("/studio/connection");
+		await expect(card(page).locator("img")).toHaveCount(0);
+		await expect(card(page).getByText("J", { exact: true })).toBeVisible();
 	});
 });
 

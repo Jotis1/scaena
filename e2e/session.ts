@@ -32,7 +32,12 @@ export const ALL_SCOPES = [
 	"channel:read:goals",
 ];
 
-export async function createStudioUser(name = "jotis_1", scopes = ALL_SCOPES): Promise<StudioUser> {
+export async function createStudioUser(
+	name = "jotis_1",
+	scopes = ALL_SCOPES,
+	/** Foto de perfil de Twitch; sin ella, la cuenta sale con la inicial. */
+	image: string | null = null,
+): Promise<StudioUser> {
 	const db = new pg.Client({ connectionString: E2E_DATABASE_URL });
 	await db.connect();
 	const userId = `e2e-${randomUUID()}`;
@@ -41,8 +46,8 @@ export async function createStudioUser(name = "jotis_1", scopes = ALL_SCOPES): P
 	const expires = new Date(now.getTime() + 30 * 86_400_000);
 	try {
 		await db.query(
-			'insert into "user" (id, name, email, "emailVerified", "createdAt", "updatedAt") values ($1, $2, $3, true, $4, $4)',
-			[userId, name, `${userId}@e2e.scaena`, now],
+			'insert into "user" (id, name, email, "emailVerified", image, "createdAt", "updatedAt") values ($1, $2, $3, true, $5, $4, $4)',
+			[userId, name, `${userId}@e2e.scaena`, now, image],
 		);
 		await db.query(
 			'insert into account (id, "accountId", "providerId", "userId", scope, "createdAt", "updatedAt") values ($1, $2, $3, $4, $5, $6, $6)',

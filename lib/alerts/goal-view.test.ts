@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { keys } from "../redis/keys";
 import { memoryStore } from "../storage/memory";
 import type { AlertEvent } from "../twitch/eventsub/event";
-import { clockOffset, type GoalView, parseGoalView, pickGoal } from "./goal-pick";
+import { clockOffset, type GoalView, parseGoalView, pickGoal, viewOf } from "./goal-pick";
 import { GOAL_VIEW_EVENT, goalOverview, publishGoalView, resolveGoalView } from "./goal-view";
 import { countGoalEvent, type GoalState, saveGoal, saveShow, twitchRef } from "./saved-goal";
 import { endTwitchGoal, saveTwitchGoal, type TwitchGoal } from "./twitch-goal";
@@ -151,6 +151,64 @@ describe("qué meta sale", () => {
 		const [e] = await s.xrange(keys.channel(CHANNEL, "events"));
 		expect(e?.fields.type).toBe(GOAL_VIEW_EVENT);
 		expect(JSON.parse(e?.fields.data ?? "{}")).toMatchObject({ kind: "one", goal: { label: "Subs" } });
+	});
+});
+
+// design.md del cambio studio-polish-0-4-1, decisión 3: la misma regla, sin servidor, para el estudio.
+describe("la vista, calculada en el estudio", () => {
+	const g = (ref: string, label = ref): GoalState => ({
+		ref: ref as GoalState["ref"],
+		source: ref.startsWith("twitch") ? "twitch" : "scaena",
+		type: "subs",
+		label,
+		current: 0,
+		target: 1,
+	});
+	const A = g("scaena:aaaaaaaa", "A");
+	const B = g("scaena:bbbbbbbb", "B");
+	const T = g("twitch:t1", "T");
+
+	it("es la misma que la del servidor para el mismo estado", async () => {
+		const { s, subs, follows } = await twoGoals();
+		await saveShow(
+			s,
+			CHANNEL,
+			{
+				kind: "rotate",
+				every: 10,
+				items: [subs, follows].map((x) => ({ ref: x.ref, whenDone: "keep" as const })),
+			},
+			[],
+		);
+		const o = await goalOverview(s, CHANNEL, 7);
+		expect(viewOf(o.goals, o.twitchGoals, o.show, o.done, 7)).toEqual(o.view);
+	});
+
+	it("sin elección o con una que ya no existe, la primera; sin metas, nada", () => {
+		expect(viewOf([A, B], [], undefined, {}, 0)).toEqual({ kind: "one", goal: A });
+		expect(viewOf([A, B], [], { kind: "one", ref: "twitch:no" }, {}, 0)).toEqual({
+			kind: "one",
+			goal: A,
+		});
+		expect(viewOf([], [], undefined, {}, 0)).toBeNull();
+		expect(viewOf([A], [T], { kind: "one", ref: "twitch:t1" }, {}, 0)).toEqual({ kind: "one", goal: T });
+	});
+
+	it("rotación: sin las cumplidas con «Sacar»; si salen todas, la última que salió", () => {
+		const items = [
+			{ ref: A.ref, whenDone: "drop" as const },
+			{ ref: B.ref, whenDone: "drop" as const },
+		];
+		const show = { kind: "rotate" as const, every: 20 as const, items };
+		expect(viewOf([A, B], [], show, {}, 5)).toEqual({
+			kind: "rotate",
+			every: 20,
+			goals: [A, B],
+			serverNow: 5,
+		});
+		expect(viewOf([A, B], [], show, { [A.ref]: 1 }, 5)).toEqual({ kind: "one", goal: B });
+		expect(viewOf([A, B], [], show, { [A.ref]: 1, [B.ref]: 3 }, 5)).toEqual({ kind: "one", goal: B });
+		expect(viewOf([A, B], [], show, { [A.ref]: 9, [B.ref]: 3 }, 5)).toEqual({ kind: "one", goal: A });
 	});
 });
 

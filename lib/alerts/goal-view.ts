@@ -3,7 +3,7 @@
 // cambia algo: la cuenta, los ajustes o una meta de Twitch. Los overlays solo eligen la que toca por el reloj.
 import { keys } from "../redis/keys";
 import type { Store } from "../storage/types";
-import { GOAL_VIEW_EVENT, type GoalView } from "./goal-pick";
+import { GOAL_VIEW_EVENT, type GoalView, viewOf } from "./goal-pick";
 import { type GoalState, readDone, readGoalSettings, readGoals } from "./saved-goal";
 import { readTwitchGoals, twitchGoalState } from "./twitch-goal";
 
@@ -15,6 +15,8 @@ export interface GoalOverview {
 	twitchGoals: GoalState[];
 	show: Awaited<ReturnType<typeof readGoalSettings>>["show"];
 	endedTwitch?: string;
+	/** Cuándo llegó cada meta a su objetivo (ms), por `ref`: el estudio lo usa para calcular la vista él mismo. */
+	done: Record<string, number>;
 	/** `null` sin ninguna meta: los overlays usan la de su URL. */
 	view: GoalView | null;
 }
@@ -27,32 +29,14 @@ export async function goalOverview(store: Store, channelId: string, now = Date.n
 		readDone(store, channelId),
 	]);
 	const twitchGoals = twitch.map(twitchGoalState);
-	const byRef = new Map([...goals, ...twitchGoals].map((g) => [g.ref as string, g]));
-	const fallback = goals[0] ?? null;
 	const show = settings.show;
-	let view: GoalView | null = fallback ? { kind: "one", goal: fallback } : null;
-
-	if (show?.kind === "one") {
-		const g = byRef.get(show.ref);
-		if (g) view = { kind: "one", goal: g };
-	} else if (show?.kind === "rotate") {
-		const marked = show.items.filter((i) => byRef.has(i.ref));
-		const left = marked.filter((i) => !(i.whenDone === "drop" && done[i.ref] !== undefined));
-		let list = left.map((i) => byRef.get(i.ref) as GoalState);
-		// Todas han salido al cumplirse: se queda la última que salió.
-		if (!list.length && marked.length) {
-			const last = marked.reduce((a, b) => ((done[b.ref] ?? 0) > (done[a.ref] ?? 0) ? b : a));
-			list = [byRef.get(last.ref) as GoalState];
-		}
-		if (list.length === 1) view = { kind: "one", goal: list[0] as GoalState };
-		else if (list.length > 1) view = { kind: "rotate", every: show.every, goals: list, serverNow: now };
-	}
 	return {
 		goals,
 		twitchGoals,
 		show,
 		...(settings.endedTwitch ? { endedTwitch: settings.endedTwitch } : {}),
-		view,
+		done,
+		view: viewOf(goals, twitchGoals, show, done, now),
 	};
 }
 

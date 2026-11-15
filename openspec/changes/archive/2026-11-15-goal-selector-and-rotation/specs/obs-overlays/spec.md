@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Meta editable en el estudio
-El estudio SHALL dejar tener hasta 5 metas propias del canal, cada una con su tipo (suscripciones, seguidores o bits), texto, objetivo, unidad y lo que se lleva, y añadirlas, editarlas y borrarlas. Una vez creada la primera, SHALL quedar siempre al menos una. Al guardar, la pieza de meta y las escenas abiertas en OBS SHALL mostrar el cambio sin recargar ni cambiar su URL. Cambiar el tipo, el texto o el objetivo SHALL conservar la cuenta; cambiar lo que se lleva SHALL fijarla. El objetivo SHALL ser un entero mayor que cero.
+El estudio SHALL dejar añadir, editar y borrar hasta 5 metas propias, cada una con tipo (subs, seguidores o bits), texto, objetivo, unidad y lo que se lleva. Una vez creada la primera, SHALL quedar siempre al menos una. Al guardar, la pieza de meta y las escenas abiertas en OBS SHALL mostrar el cambio sin recargar ni cambiar su URL. Cambiar el tipo, el texto o el objetivo SHALL conservar la cuenta; cambiar lo que se lleva SHALL fijarla. El objetivo SHALL ser un entero mayor que cero.
 
 #### Scenario: Cambiar el objetivo en directo
 - **WHEN** sale la meta de subs, va por 290 de 300, la escena de juego está abierta en OBS y en el estudio se guarda el objetivo 350

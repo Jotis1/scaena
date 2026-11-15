@@ -3,11 +3,20 @@ import { loadMainProfile } from "@/lib/profile";
 import { linkedSocials, SOCIAL_NAMES } from "@/lib/profile/socials";
 import { ScaenaBrand } from "./ScaenaBrand";
 
+/** «Esta web»: lo mismo que la cabecera; «Estudio», a Overlays con sesión y a la entrada sin ella. */
+export function siteLinks(signedIn: boolean) {
+	return [
+		{ label: "Inicio", href: "/" },
+		{ label: "Vídeos", href: "/videos" },
+		{ label: "Estudio", href: signedIn ? "/studio/overlays" : "/studio/login" },
+	];
+}
+
 /**
  * Pie de la web con el `Footer` de Regula (diseño: «Portada» y «Vídeos»): la marca, la línea del perfil, «El canal»
- * y «Esta web». Las redes sin enlace (Discord sin invitación) no salen (specs/channel-profile, «Enlaces opcionales»).
+ * y «Esta web», con las mismas páginas que la cabecera (specs/channel-site, «Diseño de la suite»). Las redes sin enlace (Discord sin invitación) no salen (specs/channel-profile, «Enlaces opcionales»).
  */
-export async function SiteFooter() {
+export async function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
 	const profile = await loadMainProfile();
 	return (
 		<Footer
@@ -24,10 +33,7 @@ export async function SiteFooter() {
 				},
 				{
 					title: "Esta web",
-					links: [
-						{ label: "Inicio", href: "/" },
-						{ label: "Vídeos", href: "/videos" },
-					],
+					links: siteLinks(signedIn),
 				},
 			]}
 			copyright="Scaena es parte de jotis.me."
