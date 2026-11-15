@@ -73,3 +73,13 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+// Cambios del perfil del canal hechos en el estudio, encima de content/channel.yaml (specs/channel-profile,
+// «Contenido del canal en un solo sitio»). Solo los campos editados; la clave es el usuario de Twitch.
+model ChannelProfile {
+  login     String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@map("channel_profile")
+}

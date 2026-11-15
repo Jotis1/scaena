@@ -2,7 +2,7 @@
 // fallan, el estado es «offline» y la lista de vídeos la última conocida o vacía (specs/live-status y
 // specs/youtube-vods, «Fallo de …»).
 import { channelIdOf } from "./channel";
-import { getMainProfile } from "./profile";
+import { repoProfile } from "./profile";
 import { helixDeps } from "./twitch/server";
 import { getStatus, type LiveStatus } from "./twitch/status";
 import { youtubeDeps } from "./youtube/server";
@@ -10,7 +10,7 @@ import { getVideos, type VideoList } from "./youtube/videos";
 
 async function mainChannelId(): Promise<string | null> {
 	try {
-		return await channelIdOf(getMainProfile().twitch.login);
+		return await channelIdOf(repoProfile().twitch.login);
 	} catch (error) {
 		console.error(error);
 		return null;
@@ -20,14 +20,14 @@ async function mainChannelId(): Promise<string | null> {
 export async function siteStatus(): Promise<LiveStatus> {
 	const id = await mainChannelId();
 	if (!id) return { live: false, stale: true };
-	return getStatus(helixDeps(), id, getMainProfile().twitch.login);
+	return getStatus(helixDeps(), id, repoProfile().twitch.login);
 }
 
 export async function siteVideos(): Promise<VideoList> {
 	const id = await mainChannelId();
 	if (!id) return { videos: [], stale: true };
 	try {
-		return await getVideos(youtubeDeps(), id, getMainProfile().youtube.handle);
+		return await getVideos(youtubeDeps(), id, repoProfile().youtube.handle);
 	} catch (error) {
 		console.error(error);
 		return { videos: [], stale: true };

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { ConnectionUnreachable, ConnectionView } from "@/components/studio/ConnectionView";
+import { ScopeNotice } from "@/components/studio/ScopeNotice";
 import { StudioContent, StudioPageHeader } from "@/components/studio/StudioContent";
+import { TWITCH_SCOPES } from "@/lib/auth";
+import { missingScopes } from "@/lib/studio/connection";
 import { requirePageSession } from "@/lib/studio/session";
 import { type ConnectionStatus, connectionStatus } from "@/lib/twitch/eventsub/subscriptions";
 import { eventSubDeps } from "@/lib/twitch/server";
@@ -25,6 +28,7 @@ export default async function ConnectionPage() {
 				title="Conexión"
 				description="Lo que Twitch le cuenta a Scaena: quién sigue, quién se suscribe, quién llega con una raid. Sin esto, los overlays se quedan callados."
 			/>
+			<ScopeNotice missing={missingScopes(session.scopes, TWITCH_SCOPES)} />
 			{status ? (
 				<ConnectionView
 					status={status}

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 		store: s,
 		channelId: channelIdOf,
 		initial: (channelId) => async () => {
-			const profile = profileOf(login);
+			const profile = await profileOf(login);
 			return profile ? initialEvents(s, channelId, profile) : [];
 		},
 	});

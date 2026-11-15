@@ -1,22 +1,36 @@
 // Sesión del estudio: quién ha entrado y de qué canal es. El canal sale de la sesión (el id de Twitch de la
 // cuenta), nunca de la URL: con varios canales, cada persona solo ve el suyo (design.md, decisiones 9 y 14).
+import { getSessionCookie } from "better-auth/cookies";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "../auth";
 
 export interface StudioSession {
 	name: string;
+	/** Foto de perfil de Twitch, si la hay. */
+	image?: string;
 	/** Id de Twitch de la cuenta: el canal del estudio. */
 	channelId: string;
+	/** Permisos que dio la cuenta al entrar; si falta alguno de `TWITCH_SCOPES`, hay que volver a entrar. */
+	scopes: string[];
 }
 
 export async function readSession(requestHeaders: Headers): Promise<StudioSession | null> {
+	// Sin cookie no hay sesión: la web pública no va a la base de datos por cada visita.
+	if (!getSessionCookie(requestHeaders)) return null;
 	const a = auth();
 	const session = await a.api.getSession({ headers: requestHeaders });
 	if (!session) return null;
 	const accounts = await a.api.listUserAccounts({ headers: requestHeaders });
 	const twitch = accounts.find((c) => c.providerId === "twitch");
-	return twitch ? { name: session.user.name, channelId: twitch.accountId } : null;
+	return twitch
+		? {
+				name: session.user.name,
+				image: session.user.image ?? undefined,
+				channelId: twitch.accountId,
+				scopes: twitch.scopes ?? [],
+			}
+		: null;
 }
 
 /** En una página del estudio: la sesión o, si no hay, a la entrada. */

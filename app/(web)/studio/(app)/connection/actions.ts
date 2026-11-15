@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { requirePageSession } from "@/lib/studio/session";
 import { ConnectionError, connect, disconnect } from "@/lib/twitch/eventsub/subscriptions";
-import { eventSubDeps } from "@/lib/twitch/server";
+import { syncTwitchGoal } from "@/lib/twitch/goals";
+import { eventSubDeps, goalSyncDeps } from "@/lib/twitch/server";
 
 export interface ActionResult {
 	error?: string;
@@ -26,7 +28,12 @@ async function run(job: (channelId: string) => Promise<unknown>): Promise<Action
 }
 
 export async function connectEvents(): Promise<ActionResult> {
-	return run((id) => connect(eventSubDeps(), id));
+	const h = await headers();
+	return run(async (id) => {
+		await connect(eventSubDeps(), id);
+		// La meta que ya hubiera en Twitch, sin esperar al siguiente aviso. Si falla, no estropea la conexión.
+		await syncTwitchGoal(goalSyncDeps(h), id);
+	});
 }
 
 export async function disconnectEvents(): Promise<ActionResult> {

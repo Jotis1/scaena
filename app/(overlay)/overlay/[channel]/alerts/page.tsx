@@ -12,7 +12,7 @@ export default async function AlertsOverlay({
 	params: Promise<{ channel: string }>;
 	searchParams: Promise<SearchParams>;
 }) {
-	const profile = profileForOverlay((await params).channel);
+	const profile = await profileForOverlay((await params).channel);
 	const q = await searchParams;
 	return (
 		<ChannelEventsProvider channel={profile.twitch.login} token={text(q, "token", "", 200)}>

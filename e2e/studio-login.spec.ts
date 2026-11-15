@@ -41,7 +41,10 @@ test("la entrada tiene el nombre de la app y el botón de tema", async ({ page }
 	await page.goto("/studio/login");
 	await expect(page.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ }).first()).toBeVisible();
 	await expect(page.getByRole("banner").getByText("Scaena", { exact: true }).first()).toBeVisible();
-	// La cabecera de la web, sin «Estudio», y la vuelta a la web desde la tarjeta.
-	await expect(page.getByRole("banner").getByRole("link", { name: "Estudio" })).toHaveCount(0);
+	// La cabecera de la web, con «Estudio» actual (sin sesión lleva aquí), y la vuelta a la web desde la tarjeta.
+	await expect(page.getByRole("banner").getByRole("link", { name: "Estudio" }).first()).toHaveAttribute(
+		"href",
+		"/studio/login",
+	);
 	await expect(page.getByRole("link", { name: "Vuelve a la web del canal" })).toHaveAttribute("href", "/");
 });

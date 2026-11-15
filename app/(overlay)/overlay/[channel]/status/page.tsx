@@ -10,7 +10,7 @@ export default async function StatusOverlay({
 	params: Promise<{ channel: string }>;
 	searchParams: Promise<SearchParams>;
 }) {
-	const profile = profileForOverlay((await params).channel);
+	const profile = await profileForOverlay((await params).channel);
 	const q = await searchParams;
 	return <LiveStatusPill channel={profile.twitch.login} viewers={bool(q, "viewers", false)} />;
 }

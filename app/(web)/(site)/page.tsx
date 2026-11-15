@@ -4,7 +4,7 @@ import { LatestVideos } from "@/components/web/home/LatestVideos";
 import { StreamJourney } from "@/components/web/home/StreamJourney";
 import { fillPhrase } from "@/lib/alerts/phrase";
 import { pageMetadata } from "@/lib/metadata";
-import { getMainProfile } from "@/lib/profile";
+import { loadMainProfile } from "@/lib/profile";
 import { sceneFooter, usuallyLiveText } from "@/lib/profile/schedule";
 import { linkedSocials } from "@/lib/profile/socials";
 import { siteVideos } from "@/lib/site";
@@ -13,12 +13,12 @@ import { siteVideos } from "@/lib/site";
 // en este orden. El estado del directo lo pone el layout; los vídeos salen de la caché de YouTube.
 export const dynamic = "force-dynamic";
 
-export function generateMetadata(): Metadata {
+export function generateMetadata(): Promise<Metadata> {
 	return pageMetadata({ path: "/" });
 }
 
 export default async function Home() {
-	const profile = getMainProfile();
+	const profile = await loadMainProfile();
 	const { videos } = await siteVideos();
 	const footer = sceneFooter(profile.schedule);
 	const camera = profile.camera.name;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMainProfile } from ".";
+import { repoProfile } from ".";
 import {
 	bannerRows,
 	daysText,
@@ -15,7 +15,7 @@ const usual = { start: "17:00", end: "20:00", zone: "Hora peninsular" };
 
 describe("horario habitual", () => {
 	it("los textos del diseño, con el horario real del perfil", () => {
-		const s = getMainProfile().schedule;
+		const s = repoProfile().schedule;
 		expect(usuallyText(s)).toBe("Normalmente 17:00 – 20:00");
 		expect(shortSlotText(s)).toBe("17-20 h");
 		expect(sceneFooter(s)).toBe("Normalmente, de 17:00 a 20:00");

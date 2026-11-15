@@ -1,5 +1,6 @@
 // De una notificación de EventSub al evento de Scaena (specs/twitch-events, «Traducción a eventos de Regula»).
 // Tipos: https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
+import { parseTwitchGoal, type TwitchGoal } from "../../alerts/twitch-goal";
 import type { AlertEvent } from "./event";
 
 /** Suscripciones de EventSub que da de alta Scaena (design.md, decisión 3). */
@@ -12,6 +13,10 @@ export const SUBSCRIPTIONS = [
 	{ type: "channel.raid", version: "1" },
 	{ type: "stream.online", version: "1" },
 	{ type: "stream.offline", version: "1" },
+	// Metas del creador (specs/twitch-events, «Seguimiento de la meta de Twitch»). Piden `channel:read:goals`.
+	{ type: "channel.goal.begin", version: "1" },
+	{ type: "channel.goal.progress", version: "1" },
+	{ type: "channel.goal.end", version: "1" },
 ] as const;
 
 export type SubscriptionType = (typeof SUBSCRIPTIONS)[number]["type"];
@@ -24,6 +29,7 @@ export interface Notification {
 export type Normalized =
 	| { kind: "alert"; event: AlertEvent }
 	| { kind: "status"; channelId: string; live: boolean }
+	| { kind: "goal"; channelId: string; phase: "begin" | "progress" | "end"; goal: TwitchGoal }
 	| { kind: "ignore"; reason: string };
 
 /** Lo que se ve en la alerta cuando Twitch no da el nombre. */
@@ -134,6 +140,16 @@ export function normalize(n: Notification, id: string, ts: number): Normalized {
 		case "stream.offline":
 			if (!channelId) break;
 			return { kind: "status", channelId, live: n.subscription.type === "stream.online" };
+
+		case "channel.goal.begin":
+		case "channel.goal.progress":
+		case "channel.goal.end": {
+			if (!channelId) break;
+			const goal = parseTwitchGoal(e);
+			if (!goal) return { kind: "ignore", reason: "meta de Twitch sin id, tipo u objetivo" };
+			const phase = n.subscription.type.slice("channel.goal.".length) as "begin" | "progress" | "end";
+			return { kind: "goal", channelId, phase, goal };
+		}
 
 		default:
 			return { kind: "ignore", reason: `tipo sin uso en Scaena: ${n.subscription.type}` };

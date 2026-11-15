@@ -2,7 +2,19 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 import { PROFILE_ICONS } from "../icons";
-import { getProfile, PROFILE_PATH, ProfileError, parseProfile } from ".";
+import {
+	loadProfile,
+	loadProfileWithIssues,
+	mergeProfile,
+	PROFILE_PATH,
+	ProfileEditsError,
+	ProfileError,
+	parseProfile,
+	repoProfile,
+	repoProfileOf,
+	setProfileStore,
+	validateEdits,
+} from ".";
 
 const REAL_YAML = readFileSync(PROFILE_PATH, "utf8");
 
@@ -129,13 +141,81 @@ describe("perfil del canal", () => {
 	});
 });
 
-describe("getProfile", () => {
+describe("repoProfileOf", () => {
 	it("devuelve el perfil del canal configurado", () => {
-		expect(getProfile("jotis_1").name).toBe("Jotis");
-		expect(getProfile("Jotis_1").name).toBe("Jotis");
+		expect(repoProfileOf("jotis_1").name).toBe("Jotis");
+		expect(repoProfileOf("Jotis_1").name).toBe("Jotis");
 	});
 
 	it("falla con otro canal", () => {
-		expect(() => getProfile("otrocanal")).toThrow("No hay perfil para el canal «otrocanal»");
+		expect(() => repoProfileOf("otrocanal")).toThrow("No hay perfil para el canal «otrocanal»");
+	});
+});
+
+// specs/channel-profile, «Contenido del canal en un solo sitio» y «Cambios del perfil validados».
+describe("cambios del estudio sobre el perfil", () => {
+	const base = repoProfile();
+	const rules = ["Respeto.", "Sin spoilers.", "Nada de spam."];
+
+	it("sin nada guardado, sale el del repositorio", () => {
+		expect(mergeProfile(base, null)).toEqual({ profile: base, invalidFields: [] });
+	});
+
+	it("lo guardado va encima y lo que no es editable se ignora", () => {
+		const { profile, invalidFields } = mergeProfile(base, {
+			rules,
+			name: "Otro",
+			twitch: { login: "otro" },
+		});
+		expect(profile.rules).toEqual(rules);
+		expect(profile.name).toBe(base.name);
+		expect(profile.twitch.login).toBe(base.twitch.login);
+		expect(invalidFields).toEqual([]);
+	});
+
+	it("un campo guardado que ya no vale vuelve al del repositorio", () => {
+		const { profile, invalidFields } = mergeProfile(base, {
+			rules: ["1", "2", "3", "4", "5", "6"],
+			tagline: "Lema nuevo",
+		});
+		expect(profile.rules).toEqual(base.rules);
+		expect(profile.tagline).toBe("Lema nuevo");
+		expect(invalidFields).toEqual(["rules"]);
+	});
+
+	it("validar unos cambios: emoji en una norma, con su ruta", () => {
+		const error = (() => {
+			try {
+				validateEdits(base, { rules: ["Bien", "Mal 🎉"] });
+			} catch (e) {
+				return e;
+			}
+		})();
+		expect(error).toBeInstanceOf(ProfileEditsError);
+		expect((error as ProfileEditsError).fields["rules.1"]).toMatch(/emoji/);
+	});
+
+	it("el usuario de Twitch no se cambia desde el estudio", () => {
+		expect(() => validateEdits(base, { twitch: { login: "otro" } })).toThrow(ProfileEditsError);
+	});
+
+	it("validar devuelve solo los campos cambiados, ya limpios", () => {
+		const { edits, profile } = validateEdits(base, { tagline: "  Lema nuevo  " });
+		expect(edits).toEqual({ tagline: "Lema nuevo" });
+		expect(profile.tagline).toBe("Lema nuevo");
+	});
+
+	it("loadProfile lee del almacén y sigue sin él", async () => {
+		setProfileStore({ read: async () => ({ rules }), write: async () => {}, clear: async () => {} });
+		expect((await loadProfile("jotis_1")).rules).toEqual(rules);
+		setProfileStore({
+			read: async () => {
+				throw new Error("sin base de datos");
+			},
+			write: async () => {},
+			clear: async () => {},
+		});
+		expect((await loadProfileWithIssues("jotis_1")).profile.rules).toEqual(base.rules);
+		setProfileStore(undefined);
 	});
 });

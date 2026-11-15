@@ -6,7 +6,7 @@ import { useState } from "react";
 
 /**
  * «Token de los overlays», en la cabecera de Overlays (diseño: «Overlays» y «Overlays - rotar token»; specs/obs-overlays,
- * «Rotar el token»): el token tapado salvo los cuatro últimos caracteres y «Rotar» dentro del campo, que pide
+ * «Rotar el token»): el token tapado salvo los cuatro últimos caracteres, en un campo deshabilitado, y «Rotar» al lado, que pide
  * confirmación con un `Modal` destructivo.
  */
 export function TokenField({ token, onRotated }: { token: string; onRotated: (t: string) => void }) {
@@ -28,16 +28,26 @@ export function TokenField({ token, onRotated }: { token: string; onRotated: (t:
 		}
 	};
 	return (
-		<div className="min-w-60 flex-[0_1_360px]">
+		<div className="flex min-w-60 flex-[0_1_420px] items-start gap-3">
+			{/* Deshabilitado: así no se seleccionan los puntos creyendo que es el token (specs/obs-overlays, «Token sin
+			    poder seleccionarse»). «Rotar» va fuera porque un `Input` deshabilitado deshabilita también su botón. */}
 			<Input
 				label="Token de los overlays"
-				readOnly
+				disabled
 				value={`••••••••••••••••${token.slice(-4)}`}
 				hint="Va en las URL de alertas, eventos, meta y escenas."
 				error={error}
-				className="[&_input]:font-mono"
-				trailingButton={{ label: "Rotar", icon: RefreshCw01, onClick: () => setConfirming(true) }}
+				className="min-w-0 flex-1 [&_.opacity-50]:bg-secondary [&_.opacity-50]:opacity-100"
 			/>
+			<Button
+				hierarchy="secondary"
+				size="md"
+				iconLeading={RefreshCw01}
+				className="mt-6.5"
+				onClick={() => setConfirming(true)}
+			>
+				Rotar
+			</Button>
 			<Modal
 				open={confirming}
 				icon={RefreshCw01}

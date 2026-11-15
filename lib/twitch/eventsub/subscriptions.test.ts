@@ -87,9 +87,9 @@ const enabled = (type: string, id = type, status = "enabled"): Sub => ({
 });
 
 describe("conexión de EventSub", () => {
-	it("la primera vez da de alta las ocho, con la condición de cada tipo", async () => {
+	it("la primera vez da de alta las once, con la condición de cada tipo", async () => {
 		const h = fakeHelix();
-		expect(await connect(deps(h.f), CHANNEL)).toBe(8);
+		expect(await connect(deps(h.f), CHANNEL)).toBe(11);
 		expect(h.created).toEqual(SUBSCRIPTIONS.map((s) => s.type));
 		expect(h.subs.find((s) => s.type === "channel.raid")?.condition).toEqual({
 			to_broadcaster_user_id: CHANNEL,
@@ -105,7 +105,7 @@ describe("conexión de EventSub", () => {
 		const d = deps(h.f);
 		await connect(d, CHANNEL);
 		expect(await connect(d, CHANNEL)).toBe(0);
-		expect(h.subs).toHaveLength(8);
+		expect(h.subs).toHaveLength(11);
 	});
 
 	it("solo crea las que faltan y rehace las revocadas", async () => {
@@ -114,9 +114,9 @@ describe("conexión de EventSub", () => {
 			enabled("channel.cheer"),
 			enabled("channel.raid", "viejo", "notification_failures_exceeded"),
 		]);
-		expect(await connect(deps(h.f), CHANNEL)).toBe(6);
+		expect(await connect(deps(h.f), CHANNEL)).toBe(9);
 		expect(h.subs.filter((s) => s.type === "channel.raid").map((s) => s.id)).not.toContain("viejo");
-		expect(h.subs).toHaveLength(8);
+		expect(h.subs).toHaveLength(11);
 	});
 
 	it("no cuenta las de otro canal ni las de otro webhook", async () => {
@@ -126,7 +126,7 @@ describe("conexión de EventSub", () => {
 			transport: { method: "webhook", callback: "https://otra.app/hook" },
 		};
 		const h = fakeHelix([other, elsewhere]);
-		expect(await connect(deps(h.f), CHANNEL)).toBe(8);
+		expect(await connect(deps(h.f), CHANNEL)).toBe(11);
 	});
 
 	it("el estado junta Twitch y las revocaciones guardadas", async () => {
@@ -156,7 +156,7 @@ describe("conexión de EventSub", () => {
 		const d = deps(h.f, store);
 		await connect(d, CHANNEL);
 		await store.hset(keys.channel(CHANNEL, "eventsub"), { "channel.raid": "revoked" });
-		expect(await disconnect(d, CHANNEL)).toBe(8);
+		expect(await disconnect(d, CHANNEL)).toBe(11);
 		expect(h.subs).toHaveLength(0);
 		expect(await store.hgetall(keys.channel(CHANNEL, "eventsub"))).toEqual({});
 	});

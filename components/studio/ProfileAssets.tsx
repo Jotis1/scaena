@@ -35,8 +35,9 @@ function Panel({ p }: { p: PanelData }) {
 				p.action ? { label: p.action.label, href: p.action.href, icon: LinkExternal01 } : undefined
 			}
 		>
-			{p.paragraphs.map((t) => (
-				<p key={t}>{t}</p>
+			{p.paragraphs.map((t, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: mientras se edita, dos párrafos pueden decir lo mismo.
+				<p key={i}>{t}</p>
 			))}
 		</ChannelPanel>
 	);
@@ -54,7 +55,16 @@ function Banner({ b, scale }: { b: BannerData; scale: number }) {
 	);
 }
 
-export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner: BannerData }) {
+export function ProfileAssets({
+	panels,
+	banner,
+	children,
+}: {
+	panels: PanelData[];
+	banner: BannerData;
+	/** Lo que va entre la cabecera y las vistas previas: el editor del contenido. */
+	children?: ReactNode;
+}) {
 	const nodes = useRef(new Map<string, HTMLElement>());
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string>();
@@ -124,6 +134,7 @@ export function ProfileAssets({ panels, banner }: { panels: PanelData[]; banner:
 					{error}
 				</p>
 			) : null}
+			{children}
 
 			<section aria-labelledby="panels-title" className="flex flex-col gap-5">
 				<div className="flex flex-wrap items-center gap-x-3 gap-y-2">

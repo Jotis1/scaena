@@ -24,7 +24,15 @@ export interface StudioUser {
 }
 
 /** Crea a jotis_1 (id de Twitch `CHANNEL_ID`) con una sesión de 30 días. Cada test, el suyo. */
-export async function createStudioUser(name = "jotis_1"): Promise<StudioUser> {
+/** Los permisos que pide Scaena hoy (`TWITCH_SCOPES`); una sesión de antes puede no tenerlos todos. */
+export const ALL_SCOPES = [
+	"moderator:read:followers",
+	"channel:read:subscriptions",
+	"bits:read",
+	"channel:read:goals",
+];
+
+export async function createStudioUser(name = "jotis_1", scopes = ALL_SCOPES): Promise<StudioUser> {
 	const db = new pg.Client({ connectionString: E2E_DATABASE_URL });
 	await db.connect();
 	const userId = `e2e-${randomUUID()}`;
@@ -37,8 +45,8 @@ export async function createStudioUser(name = "jotis_1"): Promise<StudioUser> {
 			[userId, name, `${userId}@e2e.scaena`, now],
 		);
 		await db.query(
-			'insert into account (id, "accountId", "providerId", "userId", "createdAt", "updatedAt") values ($1, $2, $3, $4, $5, $5)',
-			[`${userId}-acc`, CHANNEL_ID, "twitch", userId, now],
+			'insert into account (id, "accountId", "providerId", "userId", scope, "createdAt", "updatedAt") values ($1, $2, $3, $4, $5, $6, $6)',
+			[`${userId}-acc`, CHANNEL_ID, "twitch", userId, scopes.join(","), now],
 		);
 		await db.query(
 			'insert into session (id, token, "userId", "expiresAt", "createdAt", "updatedAt") values ($1, $2, $3, $4, $5, $5)',

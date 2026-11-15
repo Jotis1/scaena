@@ -8,6 +8,8 @@ export default async function globalSetup() {
 	try {
 		await c.connect();
 		await c.query(`delete from "user" where id like 'e2e-%'`);
+		// El perfil editado en Recursos: cada pasada empieza con el del repositorio.
+		await c.query("delete from channel_profile");
 	} catch (e) {
 		throw new Error(
 			`El Postgres de los tests no responde (${E2E_DATABASE_URL}): ${e instanceof Error ? e.message : e}. ` +

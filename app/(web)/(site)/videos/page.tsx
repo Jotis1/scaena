@@ -10,7 +10,7 @@ import { VideoTabs } from "@/components/web/videos/VideoTabs";
 import { formatDate, formatDuration } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
 import { int, oneOf, type SearchParams, text } from "@/lib/overlay/params";
-import { getMainProfile } from "@/lib/profile";
+import { loadMainProfile } from "@/lib/profile";
 import { siteVideos } from "@/lib/site";
 import type { Video } from "@/lib/youtube/client";
 import { videosHref } from "@/lib/youtube/href";
@@ -19,7 +19,7 @@ import { type ClassifiedVideo, VIDEO_FILTERS, type VideoFilter, videoPage } from
 
 const DESCRIPTION = "Los directos, subidos enteros, y algún editado con lo mejor.";
 
-export function generateMetadata(): Metadata {
+export function generateMetadata(): Promise<Metadata> {
 	return pageMetadata({ title: "Vídeos", description: DESCRIPTION, path: "/videos" });
 }
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ const EMPTY_TITLES: Record<VideoFilter, string> = {
 // vídeos»). El filtro, el texto buscado (`q`) y la página van en la URL; el vídeo en reproducción también (`v`), y no se repite en la rejilla.
 export default async function VideosPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
 	const q = await searchParams;
-	const profile = getMainProfile();
+	const profile = await loadMainProfile();
 	const youtube = `https://www.youtube.com/${profile.youtube.handle}`;
 	const type = oneOf(q, "type", VIDEO_FILTERS, "all");
 	const { videos, stale } = await siteVideos();

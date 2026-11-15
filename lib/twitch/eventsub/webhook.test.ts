@@ -140,4 +140,31 @@ describe("webhook de EventSub", () => {
 			expect((await goals()).length).toBe(before);
 		});
 	});
+
+	// specs/twitch-events, «Seguimiento de la meta de Twitch».
+	describe("meta de Twitch", () => {
+		const goalEvents = async () =>
+			(await events())
+				.filter((e) => e.fields.type === GOAL_EVENT)
+				.map((e) => JSON.parse(e.fields.data ?? "{}"));
+
+		it("el progreso de una meta de Twitch llega a los overlays con su cifra absoluta", async () => {
+			expect((await request(F.GOAL_PROGRESS)).status).toBe(204);
+			expect((await goalEvents()).at(-1)).toMatchObject({
+				source: "twitch",
+				current: 950,
+				target: 1000,
+			});
+		});
+
+		it("al acabar, vuelve la meta de Scaena", async () => {
+			await saveGoal(store, "1337", {
+				goal: { type: "subs", label: "Meta de subs", target: 300 },
+				current: 12,
+			});
+			await request(F.GOAL_PROGRESS);
+			await request(F.GOAL_END);
+			expect((await goalEvents()).at(-1)).toMatchObject({ source: "scaena", current: 12 });
+		});
+	});
 });

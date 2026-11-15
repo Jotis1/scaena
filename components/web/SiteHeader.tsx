@@ -2,21 +2,22 @@
 
 import { HeaderNav } from "@jotis-me/react";
 import { usePathname } from "next/navigation";
-import { STUDIO_PAGES, studioPageOf } from "@/lib/studio/pages";
+import { AccountMenu, type HeaderAccount } from "./AccountMenu";
 import { ScaenaBrand } from "./ScaenaBrand";
 import { ThemeMenu } from "./ThemeMenu";
 import { VideoSearch } from "./VideoSearch";
 
 /**
- * Cabecera de la web con el `HeaderNav` de Regula: subrayada y a todo el ancho, con la marca, «Inicio» y «Vídeos» (la
- * página actual subrayada) y, a la derecha, el selector de tema y el buscador (specs/channel-site, «Diseño de la
- * suite»; design.md, decisión 1). Por debajo de 1024 px de cabecera, la navegación va en el menú: el selector de tema
- * sigue en la fila de arriba (`mobileActions`) y el buscador pasa al panel del menú (`search`).
+ * Cabecera de la web y del estudio con el `HeaderNav` de Regula: subrayada y a todo el ancho, con la marca, «Inicio»,
+ * «Vídeos» y «Estudio» (la página actual subrayada) y, a la derecha, el tema o la cuenta y el buscador
+ * (specs/channel-site, «Diseño de la suite», «Entrada al estudio desde la web» y «Menú de la cuenta»). Por debajo de
+ * 1024 px de cabecera, la navegación va en el menú: el tema o la cuenta siguen en la fila de arriba (`mobileActions`)
+ * y el buscador pasa al panel del menú (`search`).
  *
- * Con `studio`, la cabecera del estudio: añade «Estudio», actual, con sus secciones dentro, que en el móvil salen en
- * el menú (specs/channel-site, «Navegación del estudio»). La web pública no lo pasa: no enseña «Estudio».
+ * «Estudio» lleva a Overlays con sesión y a la entrada sin ella. Las secciones del estudio van en su barra lateral,
+ * no aquí.
  */
-export function SiteHeader({ studio = false }: { studio?: boolean }) {
+export function SiteHeader({ account }: { account?: HeaderAccount }) {
 	const path = usePathname();
 	return (
 		<HeaderNav
@@ -35,25 +36,16 @@ export function SiteHeader({ studio = false }: { studio?: boolean }) {
 			items={[
 				{ label: "Inicio", href: "/", current: path === "/" },
 				{ label: "Vídeos", href: "/videos", current: path.startsWith("/videos") },
-				...(studio
-					? [
-							{
-								label: "Estudio",
-								href: "/studio/overlays",
-								current: true,
-								children: STUDIO_PAGES.map((p) => ({
-									label: p.label,
-									href: p.href,
-									current: studioPageOf(path)?.id === p.id,
-								})),
-							},
-						]
-					: []),
+				{
+					label: "Estudio",
+					href: account ? "/studio/overlays" : "/studio/login",
+					current: path.startsWith("/studio"),
+				},
 			]}
 			search={<VideoSearch />}
 			actions={
 				<>
-					<ThemeMenu />
+					{account ? <AccountMenu account={account} /> : <ThemeMenu />}
 					<VideoSearch className="hidden w-70 @5xl:block" />
 				</>
 			}

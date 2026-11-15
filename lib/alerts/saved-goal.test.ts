@@ -34,8 +34,8 @@ describe("meta guardada", () => {
 	it("guardar con «Llevas» fija la cuenta y avisa a los overlays con el valor absoluto", async () => {
 		const s = memoryStore();
 		const g = await saveGoal(s, CHANNEL, { goal: SUBS, current: 290 });
-		expect(g).toEqual({ ...SUBS, current: 290 });
-		expect(await goalEvents(s)).toEqual([{ ...SUBS, current: 290 }]);
+		expect(g).toEqual({ ...SUBS, current: 290, source: "scaena" });
+		expect(await goalEvents(s)).toEqual([{ ...SUBS, current: 290, source: "scaena" }]);
 	});
 
 	it("cambiar el objetivo conserva la cuenta", async () => {
@@ -68,7 +68,7 @@ describe("meta guardada", () => {
 		const s = memoryStore();
 		await saveGoal(s, CHANNEL, { goal: SUBS, current: 10 });
 		await saveSettings(s, CHANNEL, profile, { alerts: { raid: "Llegan {espectadores}." } });
-		expect(await readGoal(s, CHANNEL)).toEqual({ ...SUBS, current: 10 });
+		expect(await readGoal(s, CHANNEL)).toEqual({ ...SUBS, current: 10, source: "scaena" });
 		await saveGoal(s, CHANNEL, { goal: { ...SUBS, label: "Subs" } });
 		expect((await readSettings(s, CHANNEL)).alerts.raid).toBe("Llegan {espectadores}.");
 	});
@@ -79,6 +79,6 @@ describe("meta guardada", () => {
 		expect(await countGoalEvent(s, ev({ type: "follow" }))).toBeNull();
 		expect(await countGoalEvent(s, ev({ type: "gift", amount: 5, test: true }))).toBeNull();
 		expect((await countGoalEvent(s, ev({ type: "gift", amount: 5 })))?.current).toBe(289);
-		expect((await goalEvents(s)).at(-1)).toEqual({ ...SUBS, current: 289 });
+		expect((await goalEvents(s)).at(-1)).toEqual({ ...SUBS, current: 289, source: "scaena" });
 	});
 });

@@ -1,6 +1,6 @@
 import { readGoal, saveGoal } from "@/lib/alerts/saved-goal";
 import { effectivePhrases, readSettings, SettingsError, saveSettings } from "@/lib/alerts/settings";
-import { getMainProfile } from "@/lib/profile";
+import { loadMainProfile } from "@/lib/profile";
 import { store } from "@/lib/storage/redis";
 import { requireApiSession } from "@/lib/studio/session";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 		readGoal(s, session.channelId),
 	]);
 	return Response.json({
-		alerts: effectivePhrases(getMainProfile(), settings),
+		alerts: effectivePhrases(await loadMainProfile(), settings),
 		saved: settings.alerts,
 		goal,
 	});
@@ -33,7 +33,7 @@ export async function PUT(request: Request) {
 	try {
 		if (body && typeof body === "object" && "goal" in body)
 			return Response.json({ goal: await saveGoal(store(), session.channelId, body) });
-		const alerts = await saveSettings(store(), session.channelId, getMainProfile(), body);
+		const alerts = await saveSettings(store(), session.channelId, await loadMainProfile(), body);
 		return Response.json({ alerts });
 	} catch (e) {
 		if (e instanceof SettingsError)
