@@ -24,3 +24,32 @@ export function fillPhrase(phrase: string, e: Pick<AlertEvent, "type" | "amount"
 		.replace(/\s{2,}/g, " ")
 		.trim();
 }
+
+/** Huecos que admite la frase de cada alerta (specs/obs-overlays, «Frases de alerta editables»). */
+export const PHRASE_HOLES: Record<AlertType, readonly string[]> = {
+	follow: [],
+	sub: [],
+	resub: ["meses"],
+	gift: ["cantidad"],
+	raid: ["espectadores"],
+	bits: ["bits"],
+};
+
+const list = (holes: readonly string[]) => holes.map((h) => `{${h}}`).join(", ");
+
+/**
+ * Error de una frase para su tipo, o `null` si vale. Lo usan el editor del estudio mientras se escribe y el servidor
+ * al guardar, así que dicen lo mismo. Leer lo ya guardado no pasa por aquí: una frase vieja se sigue usando.
+ */
+export function phraseError(type: AlertType, text: string): string | null {
+	// Vacía no es un error: al guardar, vuelve la del perfil.
+	const t = text.trim();
+	if (t.length > 120) return "Como mucho, 120 caracteres.";
+	const holes = PHRASE_HOLES[type];
+	for (const [hole, name] of t.matchAll(/\{([^}]*)\}/g))
+		if (!holes.includes(name as string))
+			return holes.length
+				? `El hueco ${hole} no vale aquí. En esta alerta solo se rellena ${list(holes)}.`
+				: `El hueco ${hole} no vale aquí. Esta alerta no tiene huecos.`;
+	return null;
+}

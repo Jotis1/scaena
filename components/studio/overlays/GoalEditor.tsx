@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Input, Select } from "@jotis-me/react";
+import { Button, Input, NumberInput, Select } from "@jotis-me/react";
 import { Check } from "@untitledui/icons";
 import { useState } from "react";
 import { GOAL_LABELS, type GoalType } from "@/lib/alerts/goal";
@@ -10,7 +10,6 @@ import type { GoalState } from "@/lib/alerts/saved-goal";
 export const DEFAULT_GOAL: GoalState = { type: "subs", label: GOAL_LABELS.subs, target: 100, current: 0 };
 
 type Field = "type" | "label" | "target" | "current";
-const digits = (v: string) => Number(v.replace(/\D/g, "")) || 0;
 
 /**
  * La meta del canal, dentro de la tarjeta «Meta» (specs/obs-overlays, «Meta editable en el estudio»). Se guarda en
@@ -62,79 +61,79 @@ export function GoalEditor({
 	};
 
 	return (
-		<>
-			<div className="w-38">
-				<Select
-					label="Tipo"
-					size="sm"
-					value={draft.type}
-					onChange={(v) => {
-						const type = v as GoalType;
-						// El texto por defecto sigue al tipo; uno escrito a mano se respeta.
-						const label =
-							draft.label === GOAL_LABELS[draft.type] ? GOAL_LABELS[type] : draft.label;
-						setDraft({ type, label });
-					}}
-					options={[
-						{ value: "subs", label: "Subs" },
-						{ value: "follows", label: "Seguidores" },
-						{ value: "bits", label: "Bits" },
-					]}
-				/>
+		<div className="flex flex-col gap-4">
+			<div className="flex flex-wrap items-start gap-4">
+				<div className="flex-[1_1_150px]">
+					<Select
+						label="Tipo"
+						value={draft.type}
+						onChange={(v) => {
+							const type = v as GoalType;
+							// El texto por defecto sigue al tipo; uno escrito a mano se respeta.
+							const label =
+								draft.label === GOAL_LABELS[draft.type] ? GOAL_LABELS[type] : draft.label;
+							setDraft({ type, label });
+						}}
+						options={[
+							{ value: "subs", label: "Subs" },
+							{ value: "follows", label: "Seguidores" },
+							{ value: "bits", label: "Bits" },
+						]}
+					/>
+				</div>
+				<div className="flex-[3_1_240px]">
+					<Input
+						label="Texto"
+						value={draft.label}
+						maxLength={40}
+						hint="Como mucho, 40 caracteres."
+						error={errors.label}
+						onChange={(e) => setDraft({ label: e.target.value })}
+					/>
+				</div>
+				<div className="flex-[1_1_150px]">
+					{/* Sin mínimo en el campo: el servidor dice por qué no vale 0 (specs/obs-overlays, «Objetivo no válido»). */}
+					<NumberInput
+						label="Objetivo"
+						min={0}
+						value={draft.target}
+						error={errors.target}
+						onChange={(n) => setDraft({ target: Math.max(0, Math.floor(n || 0)) })}
+					/>
+				</div>
+				<div className="flex-[1_1_150px]">
+					<NumberInput
+						label="Llevas"
+						min={0}
+						value={draft.current}
+						error={errors.current}
+						onChange={(n) => setDraft({ current: Math.max(0, Math.floor(n || 0)) })}
+					/>
+				</div>
 			</div>
-			<div className="w-45">
-				<Input
-					label="Texto"
-					size="sm"
-					value={draft.label}
-					maxLength={40}
-					error={errors.label}
-					onChange={(e) => setDraft({ label: e.target.value })}
-				/>
-			</div>
-			<div className="w-28">
-				<Input
-					label="Objetivo"
-					size="sm"
-					inputMode="numeric"
-					value={String(draft.target)}
-					error={errors.target}
-					onChange={(e) => setDraft({ target: digits(e.target.value) })}
-				/>
-			</div>
-			<div className="w-28">
-				<Input
-					label="Llevas"
-					size="sm"
-					inputMode="numeric"
-					value={String(draft.current)}
-					error={errors.current}
-					onChange={(e) => setDraft({ current: digits(e.target.value) })}
-				/>
-			</div>
-			<p className="basis-full text-[13px] leading-[18px] text-tertiary">
-				Se usa en la pieza de meta y en las escenas de juego y Just Chatting, y llega en directo: no
-				hace falta volver a pegar la URL. Cambiar el texto o el objetivo no toca la cuenta; «Llevas»
-				la corrige.
+			<p className="text-sm text-tertiary">
+				Es la misma meta en todas partes: la usan la pieza de meta y las escenas de juego y Just
+				Chatting. Al guardar llega en directo, sin tocar OBS. Cambiar el texto o el objetivo no toca
+				la cuenta; «Llevas» la corrige.
 			</p>
-			<div className="flex basis-full items-center gap-3">
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-3">
 				<Button
-					hierarchy="secondary"
-					size="sm"
+					hierarchy="primary"
+					size="md"
 					iconLeading={Check}
 					loading={status === "saving"}
 					onClick={save}
 				>
 					Guardar meta
 				</Button>
-				<span aria-live="polite" className="text-sm text-tertiary">
+				<p role="status" className="text-sm text-tertiary">
 					{status === "saved"
 						? "Guardada. La pieza y las escenas ya la enseñan."
 						: status === "failed"
 							? "La meta no se ha guardado: mira el mensaje debajo de cada campo."
 							: ""}
-				</span>
+				</p>
 			</div>
-		</>
+		</div>
 	);
 }

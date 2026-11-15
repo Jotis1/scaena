@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { TWITCH_SCOPES } from "../auth";
 import { SUBSCRIPTIONS } from "../twitch/eventsub/normalize";
 import type { SubscriptionRow } from "../twitch/eventsub/subscriptions";
-import { activeCount, connectionView, eventsNotice, revokedNotice } from "./connection";
+import {
+	activeCount,
+	activeProgress,
+	connectionView,
+	eventsNotice,
+	revokedNotice,
+	SCOPE_DESCRIPTIONS,
+	SUBSCRIPTION_FEEDS,
+} from "./connection";
 
 const rows = (over: Partial<Record<string, Partial<SubscriptionRow>>> = {}): SubscriptionRow[] =>
 	SUBSCRIPTIONS.map(({ type }) => ({ type, state: "enabled", ...over[type] }));
@@ -64,5 +73,25 @@ describe("aviso de eventos en el resto del estudio", () => {
 			description: "Bits: no llegarán a los overlays hasta que los des de alta.",
 			action: "Revisar la conexión",
 		});
+	});
+});
+
+describe("cuenta de la conexión", () => {
+	it("activas sobre el total, para la barra: 5 de 8 es el 62,5 %", () => {
+		const p = activeProgress(
+			rows({
+				"channel.subscription.gift": { state: "pending" },
+				"channel.raid": { state: "revoked" },
+				"stream.offline": { state: "missing" },
+			}),
+		);
+		expect(p).toEqual({ active: 5, total: 8, percent: 62.5 });
+	});
+
+	it("cada suscripción dice a qué alimenta, y cada permiso qué deja ver", () => {
+		for (const { type } of SUBSCRIPTIONS) expect(SUBSCRIPTION_FEEDS[type], type).toBeTruthy();
+		expect(SUBSCRIPTION_FEEDS["channel.raid"]).toBe("Alertas y eventos");
+		expect(SUBSCRIPTION_FEEDS["stream.online"]).toBe("Estado");
+		for (const scope of TWITCH_SCOPES) expect(SCOPE_DESCRIPTIONS[scope], scope).toBeTruthy();
 	});
 });

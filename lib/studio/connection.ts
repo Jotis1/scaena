@@ -97,3 +97,28 @@ export function eventsNotice(
 export function activeCount(rows: SubscriptionRow[]): string {
 	return `${rows.filter((r) => r.state === "enabled").length} de ${rows.length} activas`;
 }
+
+/** A qué overlays llega cada suscripción: la columna «Alimenta» (diseño: «Conexión»). */
+export const SUBSCRIPTION_FEEDS: Record<SubscriptionType, string> = {
+	"channel.follow": "Alertas, eventos y meta",
+	"channel.subscribe": "Alertas, eventos y meta",
+	"channel.subscription.message": "Alertas y eventos",
+	"channel.subscription.gift": "Alertas, eventos y meta",
+	"channel.raid": "Alertas y eventos",
+	"channel.cheer": "Alertas, eventos y meta",
+	"stream.online": "Estado",
+	"stream.offline": "Estado",
+};
+
+/** Suscripciones activas, para la barra de la tarjeta de la cuenta. */
+export function activeProgress(rows: SubscriptionRow[]): { active: number; total: number; percent: number } {
+	const active = rows.filter((r) => r.state === "enabled").length;
+	return { active, total: rows.length, percent: rows.length ? (active / rows.length) * 100 : 0 };
+}
+
+/** Qué deja ver cada permiso que se pide al entrar, en castellano (diseño: «Conexión - sin conectar»). */
+export const SCOPE_DESCRIPTIONS: Record<string, string> = {
+	"moderator:read:followers": "Saber quién empieza a seguir el canal",
+	"channel:read:subscriptions": "Ver subs, renovaciones y regalos",
+	"bits:read": "Ver los bits que mandan",
+};

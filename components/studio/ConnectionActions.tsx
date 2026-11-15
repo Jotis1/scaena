@@ -2,6 +2,7 @@
 
 import { Alert, Button, type ButtonHierarchy } from "@jotis-me/react";
 import { LogOut01, RefreshCw01 } from "@untitledui/icons";
+import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
 import { SocialLogo } from "@/components/brand/SocialLogo";
 import type { IconProp } from "@/lib/icons";
@@ -82,5 +83,22 @@ export function ReactivateButton({ action, primary }: { action: Action; primary:
 		>
 			Reactivar
 		</ActionButton>
+	);
+}
+
+/** «Volver a intentar» cuando Twitch no responde: vuelve a pedir la página al servidor (design.md, decisión 8). */
+export function RetryButton() {
+	const router = useRouter();
+	const [pending, start] = useTransition();
+	return (
+		<Button
+			hierarchy="secondary"
+			size="sm"
+			iconLeading={RefreshCw01}
+			loading={pending}
+			onClick={() => start(() => router.refresh())}
+		>
+			Volver a intentar
+		</Button>
 	);
 }

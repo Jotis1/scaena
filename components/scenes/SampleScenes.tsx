@@ -12,7 +12,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CAMERA_HOLE, ChattingLayout, GameLayout } from "@/components/overlay/scenes/layouts";
 import { SAMPLE_CHAT, SAMPLE_EVENTS } from "@/components/studio/samples";
-import { GOAL_LABELS } from "@/lib/alerts/goal";
+import { GOAL_LABELS, GOAL_UNITS } from "@/lib/alerts/goal";
 
 // Escenas montadas con datos de muestra (diseño: «Escenas montadas»), para enseñarlas fuera de OBS: el marco y
 // «Cómo va un directo» de la portada. Son ilustración: van ocultas al lector de pantalla y sin foco.
@@ -30,7 +30,15 @@ export function SampleGameScene({ cameraName, alertDetail }: SampleSceneProps) {
 		<GameLayout
 			status={<StreamStatus status="live" uptime="2:14:05" category="Elden Ring" />}
 			alerts={<StreamAlert type="raid" user="[canal]" amount={1284} detail={alertDetail} />}
-			goal={<StreamGoal label={GOAL_LABELS.subs} current={284} goal={300} width={400} />}
+			goal={
+				<StreamGoal
+					label={GOAL_LABELS.subs}
+					current={284}
+					goal={300}
+					unit={GOAL_UNITS.subs}
+					width={400}
+				/>
+			}
 			chat={<ChatBox messages={SAMPLE_CHAT} width={400} height={440} translucent />}
 			events={<StreamEvents items={SAMPLE_EVENTS} max={4} width={384} />}
 			camera={<CamFrame ratio="16:9" width={384} live name={cameraName} />}
@@ -44,7 +52,15 @@ export function SampleChattingScene({ cameraName, alertDetail }: SampleSceneProp
 		<ChattingLayout
 			status={<StreamStatus status="live" uptime="2:14:05" category="Just Chatting" />}
 			alerts={<StreamAlert type="resub" user="[espectador]" months={14} detail={alertDetail} />}
-			goal={<StreamGoal label={GOAL_LABELS.subs} current={284} goal={300} width={400} />}
+			goal={
+				<StreamGoal
+					label={GOAL_LABELS.subs}
+					current={284}
+					goal={300}
+					unit={GOAL_UNITS.subs}
+					width={400}
+				/>
+			}
 			events={<StreamEvents items={SAMPLE_EVENTS} max={2} width={400} />}
 			camera={<CamFrame ratio="16:9" width={CAMERA_HOLE.width} live name={cameraName} />}
 			chat={<ChatBox messages={SAMPLE_CHAT} width={528} height={736} />}

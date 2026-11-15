@@ -7,7 +7,7 @@ describe("alertas de prueba", () => {
 	it("hay una por tipo, con las etiquetas del diseño", () => {
 		expect(TEST_ALERTS.map((t) => t.label)).toEqual([
 			"Follow",
-			"Sub nivel 1",
+			"Sub",
 			"Renovación de 14 meses",
 			"5 subs regaladas",
 			"Raid de 1.284",

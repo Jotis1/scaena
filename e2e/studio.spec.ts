@@ -21,65 +21,91 @@ test.afterEach(async () => {
 });
 
 test.describe("armazón", () => {
-	test("/studio lleva a /studio/overlays y la barra marca la página actual", async ({ page }) => {
+	// specs/channel-site, «Navegación del estudio».
+	const sections = (page: Page) => page.getByRole("navigation", { name: "Secciones del estudio" });
+
+	test("/studio lleva a Overlays; cambiar de sección marca la actual", async ({ page }) => {
 		await page.goto("/studio");
 		await expect(page).toHaveURL(/\/studio\/overlays$/);
-		const nav = page.getByRole("navigation", { name: "Estudio" });
-		await expect(nav.getByRole("link", { name: "Overlays" })).toHaveAttribute("aria-current", "page");
-		await nav.getByRole("link", { name: "Recursos" }).click();
-		await expect(page).toHaveURL(/\/studio\/assets$/);
-		await expect(nav.getByRole("link", { name: "Recursos" })).toHaveAttribute("aria-current", "page");
-		await expect(nav.getByRole("link", { name: "Overlays" })).not.toHaveAttribute("aria-current", "page");
-		// Cuenta de la sesión, sin selector de canal.
-		await expect(page.getByText("jotis_1", { exact: true }).first()).toBeVisible();
-		await expect(page.getByRole("combobox", { name: /canal/i })).toHaveCount(0);
+		await expect(sections(page).getByRole("link", { name: "Overlays" })).toHaveAttribute(
+			"aria-current",
+			"page",
+		);
+		await sections(page).getByRole("link", { name: "Conexión" }).click();
+		await expect(page).toHaveURL(/\/studio\/connection$/);
+		await expect(sections(page).getByRole("link", { name: "Conexión" })).toHaveAttribute(
+			"aria-current",
+			"page",
+		);
+		await expect(sections(page).getByRole("link", { name: "Overlays" })).not.toHaveAttribute(
+			"aria-current",
+			"page",
+		);
 	});
 
-	test("a 1920 px el contenido va centrado en el espacio a la derecha de la barra lateral", async ({
+	test("la cabecera es la de la web, con «Estudio» como página actual y el tema; sin barra lateral", async ({
 		page,
 	}) => {
+		for (const path of ["/studio/overlays", "/studio/guide", "/studio/assets", "/studio/connection"]) {
+			await page.goto(path);
+			const header = page.getByRole("banner");
+			await expect(header.getByRole("link", { name: "Estudio" }).first(), path).toHaveAttribute(
+				"aria-current",
+				"page",
+			);
+			await expect(header.getByRole("link", { name: "Vídeos" }).first(), path).toBeVisible();
+			await expect(
+				header.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ }).first(),
+				path,
+			).toBeVisible();
+			await expect(page.locator("aside"), path).toHaveCount(0);
+		}
+	});
+
+	test("la cuenta y «Salir» se ven en la barra de secciones sin abrir nada", async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 800 });
+		await page.goto("/studio/guide");
+		await expect(page.getByText("Cuenta de Twitch")).toBeInViewport();
+		await expect(page.getByRole("button", { name: "Salir" })).toBeInViewport();
+	});
+
+	test("a 1920 px el contenido va centrado, con 1280 px como mucho", async ({ page }) => {
 		await page.setViewportSize({ width: 1920, height: 1080 });
 		for (const path of ["/studio/overlays", "/studio/guide", "/studio/assets", "/studio/connection"]) {
 			await page.goto(path);
-			const gaps = await page.locator("main").evaluate((main) => {
-				// La barra lateral es lo de antes del contenedor de `main`.
-				const sidebar = main.parentElement?.previousElementSibling;
-				if (!sidebar) throw new Error("no hay barra lateral antes del contenido");
-				const s = sidebar.getBoundingClientRect();
-				const m = main.getBoundingClientRect();
-				return { left: m.left - s.right, right: document.documentElement.clientWidth - m.right };
+			const box = await page.getByRole("heading", { level: 1 }).evaluate((h) => {
+				let el: HTMLElement | null = h as HTMLElement;
+				while (el && !el.className.includes("max-w-320")) el = el.parentElement;
+				const r = (el as HTMLElement).getBoundingClientRect();
+				return {
+					left: r.left,
+					right: document.documentElement.clientWidth - r.right,
+					width: r.width,
+				};
 			});
-			// Con 1180 px de máximo, sobra sitio a los dos lados.
-			expect(gaps.left, path).toBeGreaterThan(50);
-			expect(Math.abs(gaps.left - gaps.right), path).toBeLessThan(2);
+			expect(box.width, path).toBeLessThanOrEqual(1280);
+			expect(Math.abs(box.left - box.right), path).toBeLessThan(2);
 		}
 	});
 
-	test("la barra lateral es fija: la cuenta y «Salir» se ven sin bajar, también al final de la página", async ({
-		page,
-	}) => {
-		await page.setViewportSize({ width: 1440, height: 800 });
-		await page.goto("/studio/overlays");
-		const logout = page.getByRole("button", { name: "Salir" });
-		await expect(logout).toBeInViewport();
-		await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-		await expect(logout).toBeInViewport();
-		await expect(page.getByText("Cuenta de Twitch")).toBeInViewport();
-	});
-
-	test("sin migas: cada página lleva el botón de tema en su cabecera", async ({ page }) => {
+	test("en el móvil, las secciones se desplazan en su barra y la página no", async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
 		for (const path of ["/studio/overlays", "/studio/guide", "/studio/assets", "/studio/connection"]) {
 			await page.goto(path);
-			await expect(page.getByRole("navigation", { name: "Ruta en el estudio" })).toHaveCount(0);
-			const header = page
-				.locator("main")
-				.getByRole("heading", { level: 1 })
-				.locator("xpath=ancestor::header[1]");
-			await expect(
-				header.getByRole("button", { name: /^Tema: (Claro|Oscuro|Sistema)$/ }),
-				path,
-			).toBeVisible();
+			await expect(sections(page)).toBeAttached();
+			await expect(page.getByRole("button", { name: "Salir" })).toBeVisible();
+			const [scroll, client] = await page.evaluate(() => [
+				document.documentElement.scrollWidth,
+				document.documentElement.clientWidth,
+			]);
+			expect(scroll, path).toBeLessThanOrEqual(client);
 		}
+	});
+
+	test("la web pública no enseña «Estudio» aunque haya sesión", async ({ page }) => {
+		await page.goto("/");
+		await expect(page.getByRole("banner").getByRole("link", { name: "Inicio" }).first()).toBeVisible();
+		await expect(page.getByRole("banner").getByRole("link", { name: "Estudio" })).toHaveCount(0);
 	});
 
 	test("«Salir» cierra la sesión", async ({ page }) => {
@@ -106,10 +132,19 @@ test.describe("armazón", () => {
 	});
 });
 
+// specs/obs-overlays, «Página de URLs para copiar», «Rotar el token» y «Frases de alerta editables»; specs/twitch-events,
+// «Disparo de prueba». Lista y detalle: el detalle es una región con el nombre de la fuente elegida.
 test.describe("overlays", () => {
-	test("al marcar «translúcido» cambian la URL y la vista previa", async ({ page }) => {
+	const detail = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
+	const pick = (page: Page, name: string) =>
+		page.getByRole("tablist", { name: "Fuentes" }).getByRole("tab", { name, exact: true }).click();
+	const kinds = (page: Page) => page.getByRole("tablist", { name: "Tipo de fuente" });
+
+	test("copiar URL configurada: apagar «Fondo translúcido» cambia la URL y la vista previa", async ({
+		page,
+	}) => {
 		await page.goto("/studio/overlays");
-		const chat = page.getByRole("article", { name: "Chat" });
+		const chat = detail(page, "Chat");
 		const url = chat.locator('[data-url="chat"]');
 		await expect(url).toHaveValue(/\/overlay\/jotis_1\/chat\?translucent=1$/);
 		const preview = chat.locator('[data-preview="chat"] [role="log"]');
@@ -117,107 +152,96 @@ test.describe("overlays", () => {
 		await chat.getByText("Fondo translúcido", { exact: true }).click();
 		await expect(url).toHaveValue(/\/overlay\/jotis_1\/chat$/);
 		expect(await preview.evaluate((el) => el.outerHTML)).not.toBe(before);
+		await expect(chat.getByText("Sin token: el chat ya es público.")).toBeVisible();
 	});
 
-	test("las URL con eventos llevan el token tapado; copiar pone el de verdad", async ({
+	test("cambiar a escenas: la lista enseña seis, el detalle pasa a juego y la URL de la página lo dice", async ({
 		page,
-		context,
 	}) => {
-		await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 		await page.goto("/studio/overlays");
+		const list = page.getByRole("tablist", { name: "Fuentes" });
+		await expect(list.getByRole("tab")).toHaveCount(6);
+		await kinds(page)
+			.getByRole("tab", { name: /Escenas/ })
+			.click();
+		await expect(page).toHaveURL(/\/studio\/overlays\?source=game$/);
+		await expect(list.getByRole("tab")).toHaveCount(6);
+		await expect(list.getByRole("tab", { name: "Chat", exact: true })).toHaveCount(0);
+		await expect(detail(page, "Juego").locator('[data-preview="scene/game"]')).toBeAttached();
+		await expect(detail(page, "Juego").getByText("1920 × 1080", { exact: true }).first()).toBeVisible();
+		// Recargar no pierde la fuente.
+		await page.reload();
+		await expect(detail(page, "Juego")).toBeVisible();
+	});
+
+	test("el enlace antiguo `?tab=scenes` abre la escena de juego", async ({ page }) => {
+		await page.goto("/studio/overlays?tab=scenes");
+		await expect(detail(page, "Juego")).toBeVisible();
+	});
+
+	test("escenas en ultrapanorámico: URL, tamaño y 21:9, y el lienzo se conserva al cambiar de escena", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto("/studio/overlays?source=game");
+		const game = detail(page, "Juego");
+		await expect(game.locator('[data-url="scene/game"]')).not.toHaveValue(/canvas=/);
+		await game.getByRole("button", { name: "3440 × 1440" }).click();
+		await expect(game.getByRole("button", { name: "3440 × 1440" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		await expect(page).toHaveURL(/\?source=game&canvas=3440x1440$/);
+		await expect(game.locator('[data-url="scene/game"]')).toHaveValue(/canvas=3440x1440/);
+		const box = await game.locator('[data-preview="scene/game"]').boundingBox();
+		expect((box?.width ?? 0) / (box?.height ?? 1)).toBeCloseTo(2580 / 1080, 1);
+		await pick(page, "Offline");
+		await expect(page).toHaveURL(/\?source=offline&canvas=3440x1440$/);
+		await expect(detail(page, "Offline").locator('[data-url="scene/offline"]')).toHaveValue(
+			/canvas=3440x1440/,
+		);
+		// Las piezas no llevan lienzo.
+		await kinds(page)
+			.getByRole("tab", { name: /Piezas/ })
+			.click();
+		await expect(page).toHaveURL(/\?source=chat$/);
+		await expect(page.locator("[data-url]")).not.toHaveValue(/canvas=/);
+	});
+
+	test("copiar una URL: va el token de verdad y el botón lo confirma", async ({ page, context }) => {
+		await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+		await page.goto("/studio/overlays?source=game");
 		const token = String(await redis("GET", `channel:${CHANNEL_ID}:token`));
-		const alerts = page.getByRole("article", { name: "Alertas" });
-		await expect(alerts.locator('[data-url="alerts"]')).toHaveValue(
+		const game = detail(page, "Juego");
+		await expect(game.locator('[data-url="scene/game"]')).toHaveValue(
 			new RegExp(`token=••••${token.slice(-4)}$`),
 		);
-		await alerts.getByRole("button", { name: "Copiar" }).click();
-		expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
-			new RegExp(`token=${token}$`),
-		);
-		// La meta solo lleva el token: se guarda en Scaena.
-		const goal = page.getByRole("article", { name: "Meta" });
-		await expect(goal.locator('[data-url="goal"]')).toHaveValue(
-			new RegExp(`/overlay/jotis_1/goal\\?token=••••${token.slice(-4)}$`),
-		);
-		// «Enseñar espectadores», desactivado por defecto.
-		await expect(page.getByRole("switch", { name: "Enseñar espectadores" })).not.toBeChecked();
-	});
-
-	test("«Piezas» y «Escenas»: seis y seis, la pestaña en la URL y la URL de juego se copia", async ({
-		page,
-		context,
-	}) => {
-		await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-		await page.goto("/studio/overlays");
-		const tabs = page.getByRole("tablist", { name: "Fuentes de navegador" });
-		await expect(tabs.getByRole("tab", { name: /Piezas/ })).toHaveAttribute("aria-selected", "true");
-		await expect(page.getByRole("article")).toHaveCount(6);
-		await expect(page.getByRole("article", { name: "Juego" })).toHaveCount(0);
-		await tabs.getByRole("tab", { name: /Escenas/ }).click();
-		await expect(page).toHaveURL(/\/studio\/overlays\?tab=scenes$/);
-		await expect(page.getByRole("article")).toHaveCount(6);
-		await expect(page.getByRole("article", { name: "Chat", exact: true })).toHaveCount(0);
-		const game = page.getByRole("article", { name: "Juego" });
-		await expect(game.locator('[data-preview="scene/game"]')).toBeVisible();
 		await game.getByRole("button", { name: "Copiar" }).click();
 		await expect(game.getByRole("button", { name: "Copiada" })).toBeVisible();
 		expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(
-			/\/overlay\/jotis_1\/scene\/game/,
+			new RegExp(`/overlay/jotis_1/scene/game\\?.*token=${token}$`),
 		);
-		// Recargar no pierde la pestaña.
-		await page.reload();
-		await expect(page.getByRole("article", { name: "Juego" })).toBeVisible();
-		// La indicación de OBS va una vez, en la cabecera.
-		await expect(page.getByText(/Actualizar al hacer visible la escena/)).toHaveCount(1);
+		// La meta solo lleva el token: se guarda en Scaena.
+		await kinds(page)
+			.getByRole("tab", { name: /Piezas/ })
+			.click();
+		await pick(page, "Meta");
+		await expect(detail(page, "Meta").locator('[data-url="goal"]')).toHaveValue(
+			new RegExp(`/overlay/jotis_1/goal\\?token=••••${token.slice(-4)}$`),
+		);
 	});
 
-	test("escenas en ultrapanorámico: «3440 × 1440» cambia las seis URL, las insignias y las vistas previas", async ({
-		page,
-	}) => {
-		const SCENES = ["game", "chatting", "starting", "brb", "ending", "offline"];
-		await page.goto("/studio/overlays?tab=scenes");
-		const urls = page.locator('[data-url^="scene/"]');
-		await expect(urls).toHaveCount(6);
-		for (const url of await urls.all()) await expect(url).not.toHaveValue(/canvas=/);
-		await expect(page.getByRole("article").getByText("1920 × 1080", { exact: true })).toHaveCount(6);
-		const preview = page.locator('[data-preview="scene/game"]');
-		expect((await preview.boundingBox())?.height).toBeCloseTo(202, 0);
-
-		await page
-			.getByRole("button", { name: /Lienzo/ })
-			.or(page.getByRole("combobox", { name: "Lienzo" }))
-			.click();
-		await page.getByRole("option", { name: "3440 × 1440" }).click();
-		await expect(page).toHaveURL(/\/studio\/overlays\?tab=scenes&canvas=3440x1440$/);
-		for (const kind of SCENES)
-			await expect(page.locator(`[data-url="scene/${kind}"]`), kind).toHaveValue(/canvas=3440x1440/);
-		await expect(page.getByRole("article").getByText("3440 × 1440", { exact: true })).toHaveCount(6);
-		// 21:9: 360 × 151.
-		for (const kind of SCENES) {
-			const b = await page.locator(`[data-preview="scene/${kind}"]`).boundingBox();
-			expect(
-				[b?.width, b?.height].map((n) => Math.round(n ?? 0)),
-				kind,
-			).toEqual([360, 151]);
-		}
-		// La escena llena la vista previa, sin bandas: el lienzo de juego mide lo mismo que la caja.
-		const game = await preview.locator("[data-scene=game]").boundingBox();
-		expect(Math.round(game?.width ?? 0)).toBe(360);
-
-		// Recargar no pierde el lienzo, y las piezas no lo llevan.
-		await page.reload();
-		await expect(page.locator('[data-url="scene/offline"]')).toHaveValue(/canvas=3440x1440/);
-		await page.getByRole("tab", { name: /Piezas/ }).click();
-		await expect(page).toHaveURL(/\/studio\/overlays$/);
-		for (const url of await page.locator("[data-url]").all())
-			await expect(url).not.toHaveValue(/canvas=/);
-		await page.getByRole("tab", { name: /Escenas/ }).click();
-		await expect(page).toHaveURL(/\?tab=scenes&canvas=3440x1440$/);
+	test("token en la cabecera: tapado salvo los cuatro últimos, con «Rotar»", async ({ page }) => {
+		await page.goto("/studio/overlays");
+		const token = String(await redis("GET", `channel:${CHANNEL_ID}:token`));
+		const field = page.getByRole("textbox", { name: "Token de los overlays" });
+		await expect(field).toHaveValue(new RegExp(`^•+${token.slice(-4)}$`));
+		await expect(page.getByRole("button", { name: "Rotar", exact: true })).toBeVisible();
 	});
 
 	test("la cuenta atrás de «Empezando» cambia la URL", async ({ page }) => {
-		await page.goto("/studio/overlays?tab=scenes");
-		const starting = page.getByRole("article", { name: "Empezando" });
+		await page.goto("/studio/overlays?source=starting");
+		const starting = detail(page, "Empezando");
 		await expect(starting.locator('[data-url="scene/starting"]')).toHaveValue(/minutes=5/);
 		await starting.getByRole("button", { name: /Sumar/ }).click();
 		await expect(starting.locator('[data-url="scene/starting"]')).toHaveValue(/minutes=6/);
@@ -226,7 +250,7 @@ test.describe("overlays", () => {
 	test("cancelar la confirmación no rota el token", async ({ page }) => {
 		await page.goto("/studio/overlays");
 		const before = await redis("GET", `channel:${CHANNEL_ID}:token`);
-		await page.getByRole("button", { name: "Rotar token" }).click();
+		await page.getByRole("button", { name: "Rotar", exact: true }).click();
 		const dialog = page.getByRole("dialog", { name: "¿Rotar el token?" });
 		await expect(dialog).toBeVisible();
 		await dialog.getByRole("button", { name: "Cancelar" }).click();
@@ -242,51 +266,76 @@ test.describe("overlays", () => {
 		expect(ok.status).toBe(200);
 		await ok.body?.cancel();
 
-		await page.getByRole("button", { name: "Rotar token" }).click();
+		await page.getByRole("button", { name: "Rotar", exact: true }).click();
 		await page.getByRole("dialog").getByRole("button", { name: "Rotar token" }).click();
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 		const fresh = String(await redis("GET", `channel:${CHANNEL_ID}:token`));
 		expect(fresh).not.toBe(old);
-		await expect(page.getByLabel("Token", { exact: true })).toHaveValue(
+		await expect(page.getByRole("textbox", { name: "Token de los overlays" })).toHaveValue(
 			new RegExp(`${fresh.slice(-4)}$`),
 		);
 		expect((await request.get(events(old))).status()).toBe(401);
 	});
 
-	test("una frase guardada se mantiene al recargar, y una mal escrita dice qué huecos valen", async ({
+	test("hueco de otra alerta: el error sale al escribir y «Guardar frases» se desactiva", async ({
 		page,
 	}) => {
-		await page.goto("/studio/overlays");
-		const alerts = page.getByRole("article", { name: "Alertas" });
-		const raid = alerts.getByLabel("Raid", { exact: true });
-		await raid.fill("Hola, {nombre}.");
-		await alerts.getByRole("button", { name: "Guardar frases" }).click();
-		await expect(alerts.getByText(/\{nombre\}.*\{meses\}/)).toBeVisible();
-
-		await raid.fill("Entran {espectadores} de golpe.");
-		await alerts.getByRole("button", { name: "Guardar frases" }).click();
-		await expect(alerts.getByText("Guardadas. La próxima alerta ya sale con ellas.")).toBeVisible();
-		await page.reload();
+		await page.goto("/studio/overlays?source=alerts");
+		const alerts = detail(page, "Alertas");
+		const save = alerts.getByRole("button", { name: "Guardar frases" });
+		const bits = alerts.getByRole("textbox", { name: "Frase de 500 bits" });
+		await bits.fill("{bit} bits. Muchas gracias.");
 		await expect(
-			page.getByRole("article", { name: "Alertas" }).getByLabel("Raid", { exact: true }),
-		).toHaveValue("Entran {espectadores} de golpe.");
+			alerts.getByText("El hueco {bit} no vale aquí. En esta alerta solo se rellena {bits}."),
+		).toBeVisible();
+		await expect(save).toBeDisabled();
+		await bits.fill("{bits} bits. Muchas gracias.");
+		const follow = alerts.getByRole("textbox", { name: "Frase de follow" });
+		await follow.fill("{meses} meses ya.");
+		await expect(alerts.getByText(/\{meses\} no vale aquí\. Esta alerta no tiene huecos/)).toBeVisible();
+		await expect(save).toBeDisabled();
+		await follow.fill("Gracias por seguir.");
+		await expect(save).toBeEnabled();
 	});
 
-	test("«Raid de 1.284» hace entrar una alerta de raid con su frase en el overlay abierto en otra pestaña", async ({
+	test("una frase guardada se mantiene al recargar", async ({ page }) => {
+		await page.goto("/studio/overlays?source=alerts");
+		const raid = () => detail(page, "Alertas").getByRole("textbox", { name: "Frase de raid de 1.284" });
+		await raid().fill("Entran {espectadores} de golpe.");
+		await expect(detail(page, "Alertas").getByText("Ahora dice: Entran 1.284 de golpe.")).toBeVisible();
+		await detail(page, "Alertas").getByRole("button", { name: "Guardar frases" }).click();
+		await expect(page.getByText("Guardadas. La próxima alerta ya sale con ellas.")).toBeVisible();
+		await page.reload();
+		await expect(raid()).toHaveValue("Entran {espectadores} de golpe.");
+	});
+
+	test("probar una alerta: «Raid de 1.284» llega al overlay abierto en otra pestaña y el estudio lo confirma", async ({
 		page,
 		context,
 	}) => {
-		await page.goto("/studio/overlays");
+		await page.goto("/studio/overlays?source=alerts");
 		const token = String(await redis("GET", `channel:${CHANNEL_ID}:token`));
 		const obs = await context.newPage();
 		await obs.goto(`/overlay/jotis_1/alerts?token=${token}`);
 		// Que el flujo esté abierto antes de disparar.
 		await obs.waitForResponse((r) => r.url().includes("/api/events") && r.status() === 200);
-		await page.getByRole("button", { name: "Raid de 1.284" }).click();
-		await expect(page.getByText("Enviada: Raid de 1.284.")).toBeVisible();
+		await detail(page, "Alertas").getByRole("button", { name: "Raid de 1.284" }).click();
+		await expect(page.getByText("Prueba enviada a OBS: Raid de 1.284.")).toBeVisible();
 		const card = obs.getByRole("status");
 		await expect(card).toContainText("Canal de prueba", { timeout: 10_000 });
 		await expect(card).toContainText("Llega con 1.284 personas. Bienvenidas.");
+	});
+
+	test("axe sin errores en una pieza y en una escena", async ({ page }) => {
+		for (const path of ["/studio/overlays?source=alerts", "/studio/overlays?source=game"]) {
+			await page.goto(path);
+			await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+			const axe = await new AxeBuilder({ page }).analyze();
+			expect(
+				axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" ")}`),
+				path,
+			).toEqual([]);
+		}
 	});
 });
 
@@ -301,19 +350,24 @@ test.describe("guía de OBS", () => {
 	test("medidas de la escena de juego en 1920 × 1080, en orden de capas", async ({ page }) => {
 		await page.goto("/studio/guide");
 		await expect(page.getByRole("heading", { level: 1, name: "Guía de OBS" })).toBeVisible();
-		const nav = page.getByRole("navigation", { name: "Estudio" });
+		const nav = page.getByRole("navigation", { name: "Secciones del estudio" });
 		await expect(nav.getByRole("link", { name: "Guía de OBS" })).toHaveAttribute("aria-current", "page");
 		const camera = row(page, "game", "Cámara");
-		await expect(camera).toContainText("x 1488 · y 816");
+		await expect(camera).toContainText("1.488, 816");
 		await expect(camera).toContainText("384 × 216");
 		// De arriba abajo: la escena de Scaena, la cámara y el juego.
 		const names = await section(page, "game").getByRole("row").allInnerTexts();
 		const cells = (t: string) => t.split(/[\t\n]/).map((c) => c.trim());
-		const order = ["Scaena · Juego", "Cámara", "Juego"].map((n) =>
+		const order = ["Escena de juego", "Cámara", "Juego"].map((n) =>
 			names.findIndex((t) => cells(t).includes(n)),
 		);
 		expect(order.every((v, i) => v > 0 && (i === 0 || v > (order[i - 1] ?? 0)))).toBe(true);
-		await expect(row(page, "chatting", "Cámara")).toContainText("x 64 · y 112");
+		await expect(row(page, "chatting", "Cámara")).toContainText("64, 112");
+		// El esquema pone la cámara donde la tabla: 77,5 % y 75,56 % del lienzo.
+		const cam = await section(page, "game")
+			.locator("[data-diagram-camera]")
+			.evaluate((el) => [(el as HTMLElement).style.left, (el as HTMLElement).style.top]);
+		expect(cam).toEqual(["77.5%", "75.56%"]);
 		await expect(section(page, "chatting")).toContainText("Aquí no hace falta máscara");
 		const axe = await new AxeBuilder({ page }).analyze();
 		expect(axe.violations.map((v) => v.id)).toEqual([]);
@@ -321,13 +375,29 @@ test.describe("guía de OBS", () => {
 
 	test("medidas en ultrapanorámico", async ({ page }) => {
 		await page.goto("/studio/guide");
-		await page.getByRole("button", { name: /Lienzo/ }).click();
-		await page.getByRole("option", { name: "3440 × 1440" }).click();
+		await page
+			.getByRole("group", { name: "Tu lienzo en OBS" })
+			.getByRole("button", { name: "3440 × 1440" })
+			.click();
 		await expect(page).toHaveURL(/\/studio\/guide\?canvas=3440x1440$/);
-		await expect(row(page, "game", "Scaena · Juego")).toContainText("3440 × 1440");
+		await expect(row(page, "game", "Escena de juego")).toContainText("3.440 × 1.440");
 		const camera = row(page, "game", "Cámara");
-		await expect(camera).toContainText("x 2864 · y 1088");
+		await expect(camera).toContainText("2.864, 1.088");
 		await expect(camera).toContainText("512 × 288");
+		// Los esquemas pasan a 21:9.
+		const d = await section(page, "game").locator("[data-diagram]").boundingBox();
+		expect((d?.width ?? 0) / (d?.height ?? 1)).toBeCloseTo(2580 / 1080, 1);
+	});
+
+	test("índice de la guía: «Just Chatting» baja a su sección", async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 800 });
+		await page.goto("/studio/guide");
+		await page
+			.getByRole("navigation", { name: "En esta guía" })
+			.getByRole("link", { name: "Just Chatting" })
+			.click();
+		await expect(page).toHaveURL(/#chatting$/);
+		await expect(page.getByRole("heading", { level: 2, name: "Just Chatting" })).toBeInViewport();
 	});
 
 	test("descargar la máscara: PNG 16:9, blanco dentro y transparente en las esquinas", async ({ page }) => {
@@ -363,18 +433,18 @@ test.describe("guía de OBS", () => {
 	});
 
 	test("«Cómo montarla» lleva a su sección con el mismo lienzo", async ({ page }) => {
-		await page.goto("/studio/overlays?tab=scenes&canvas=3440x1440");
+		await page.goto("/studio/overlays?source=game&canvas=3440x1440");
 		await page
-			.getByRole("article", { name: "Juego" })
-			.getByRole("link", { name: "Cómo montarla" })
+			.getByRole("region", { name: "Juego", exact: true })
+			.getByRole("link", { name: "Cómo montarla en OBS" })
 			.click();
 		await expect(page).toHaveURL(/\/studio\/guide\?canvas=3440x1440#game$/);
 		await expect(row(page, "game", "Cámara")).toContainText("512 × 288");
 		await expect(section(page, "game")).toBeInViewport();
-		await page.goto("/studio/overlays?tab=scenes");
+		await page.goto("/studio/overlays?source=offline");
 		await page
-			.getByRole("article", { name: "Offline" })
-			.getByRole("link", { name: "Cómo montarla" })
+			.getByRole("region", { name: "Offline", exact: true })
+			.getByRole("link", { name: "Cómo montarla en OBS" })
 			.click();
 		await expect(page).toHaveURL(/\/studio\/guide#fullscreen$/);
 	});
@@ -446,33 +516,36 @@ test.describe("tarjeta de la meta", () => {
 	test("guardar seguidores, 50 y «Llevas» 10 cambia la vista previa de la escena, y al recargar sigue", async ({
 		page,
 	}) => {
-		await page.goto("/studio/overlays");
-		const card = page.getByRole("article", { name: "Meta" });
+		await page.goto("/studio/overlays?source=goal");
+		const card = page.getByRole("region", { name: "Meta", exact: true });
 		await card.getByRole("button", { name: /Tipo/ }).click();
 		await page.getByRole("option", { name: "Seguidores" }).click();
-		await expect(card.getByRole("textbox", { name: "Texto" })).toHaveValue("Seguidores del mes");
+		await expect(card.getByRole("textbox", { name: "Texto" })).toHaveValue("Meta de seguidores");
 		await card.getByRole("textbox", { name: "Objetivo" }).fill("50");
 		await card.getByRole("textbox", { name: "Llevas" }).fill("10");
 		await card.getByRole("button", { name: "Guardar meta" }).click();
 		await expect(card.getByText("Guardada. La pieza y las escenas ya la enseñan.")).toBeVisible();
 		expect(Number(await redis("GET", `channel:${CHANNEL_ID}:goal`))).toBe(10);
 
-		await page.getByRole("tab", { name: /Escenas/ }).click();
+		await page
+			.getByRole("tablist", { name: "Tipo de fuente" })
+			.getByRole("tab", { name: /Escenas/ })
+			.click();
 		// La vista previa es decorativa (`aria-hidden`): se busca por el atributo, no por el rol accesible.
 		const preview = page.locator('[data-preview="scene/game"] [role="progressbar"]');
 		await expect(preview).toHaveAttribute("aria-valuenow", "10");
 		await expect(preview).toHaveAttribute("aria-valuemax", "50");
 
-		await page.goto("/studio/overlays");
-		const again = page.getByRole("article", { name: "Meta" });
-		await expect(again.getByRole("textbox", { name: "Texto" })).toHaveValue("Seguidores del mes");
+		await page.goto("/studio/overlays?source=goal");
+		const again = page.getByRole("region", { name: "Meta", exact: true });
+		await expect(again.getByRole("textbox", { name: "Texto" })).toHaveValue("Meta de seguidores");
 		await expect(again.getByRole("textbox", { name: "Objetivo" })).toHaveValue("50");
 		await expect(again.getByRole("textbox", { name: "Llevas" })).toHaveValue("10");
 	});
 
 	test("objetivo 0: no se guarda y lo dice en el campo", async ({ page }) => {
-		await page.goto("/studio/overlays");
-		const card = page.getByRole("article", { name: "Meta" });
+		await page.goto("/studio/overlays?source=goal");
+		const card = page.getByRole("region", { name: "Meta", exact: true });
 		await card.getByRole("textbox", { name: "Objetivo" }).fill("0");
 		await card.getByRole("button", { name: "Guardar meta" }).click();
 		await expect(card.getByText("El objetivo tiene que ser mayor que cero.")).toBeVisible();
@@ -480,23 +553,44 @@ test.describe("tarjeta de la meta", () => {
 	});
 });
 
-// Capturas para revisar a mano (`E2E_SHOTS=<carpeta>`): la guía en los dos lienzos, en claro y oscuro, y la meta.
-test.describe("capturas de la guía y la meta", () => {
+// Capturas para revisar a mano contra el canvas (`E2E_SHOTS=<carpeta>`): cada página del estudio, en escritorio y a
+// 390 px, en claro y oscuro.
+test.describe("capturas del estudio", () => {
 	test.skip(!process.env.E2E_SHOTS, "solo con E2E_SHOTS");
+	const PAGES = [
+		["overlays-alertas", "/studio/overlays?source=alerts"],
+		["overlays-juego", "/studio/overlays?source=game"],
+		["guia", "/studio/guide"],
+		["recursos", "/studio/assets"],
+		["conexion", "/studio/connection"],
+	] as const;
 	for (const scheme of ["light", "dark"] as const)
-		test(`guía y meta en ${scheme}`, async ({ page }) => {
-			await page.emulateMedia({ colorScheme: scheme });
-			await page.setViewportSize({ width: 1440, height: 900 });
-			for (const canvas of ["1920x1080", "3440x1440"]) {
-				await page.goto(`/studio/guide${canvas === "1920x1080" ? "" : `?canvas=${canvas}`}`);
-				await page.screenshot({
-					path: `${process.env.E2E_SHOTS}/guide-${canvas}-${scheme}.png`,
+		for (const [w, h] of [
+			[1440, 900],
+			[390, 844],
+		] as const)
+			test(`estudio en ${scheme} a ${w} px`, async ({ page, browser }) => {
+				await page.emulateMedia({ colorScheme: scheme });
+				await page.setViewportSize({ width: w, height: h });
+				for (const [name, path] of PAGES) {
+					await page.goto(path);
+					await page.waitForLoadState("networkidle");
+					await page.screenshot({
+						path: `${process.env.E2E_SHOTS}/${name}-${w}-${scheme}.png`,
+						fullPage: true,
+					});
+				}
+				// La entrada, sin sesión.
+				const fresh = await browser.newContext({
+					viewport: { width: w, height: h },
+					colorScheme: scheme,
+				});
+				const login = await fresh.newPage();
+				await login.goto("/studio/login");
+				await login.screenshot({
+					path: `${process.env.E2E_SHOTS}/acceso-${w}-${scheme}.png`,
 					fullPage: true,
 				});
-			}
-			await page.goto("/studio/overlays");
-			await page
-				.getByRole("article", { name: "Meta" })
-				.screenshot({ path: `${process.env.E2E_SHOTS}/goal-card-${scheme}.png` });
-		});
+				await fresh.close();
+			});
 });

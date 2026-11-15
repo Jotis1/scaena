@@ -1,7 +1,6 @@
-import { Alert, PageHeader } from "@jotis-me/react";
 import type { Metadata } from "next";
-import { ConnectionView } from "@/components/studio/ConnectionView";
-import { ThemeMenu } from "@/components/web/ThemeMenu";
+import { ConnectionUnreachable, ConnectionView } from "@/components/studio/ConnectionView";
+import { StudioContent, StudioPageHeader } from "@/components/studio/StudioContent";
 import { requirePageSession } from "@/lib/studio/session";
 import { type ConnectionStatus, connectionStatus } from "@/lib/twitch/eventsub/subscriptions";
 import { eventSubDeps } from "@/lib/twitch/server";
@@ -10,7 +9,7 @@ import { connectEvents, disconnectEvents } from "./actions";
 export const metadata: Metadata = { title: "Conexión · Estudio · Scaena", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-// Conexión con Twitch (diseño: «Conexión», sin conectar, conectado y revocada; specs/twitch-events).
+// Conexión con Twitch (diseño: «Conexión», sin conectar, conectado, revocada y error con Twitch; specs/twitch-events).
 export default async function ConnectionPage() {
 	const session = await requirePageSession();
 	let status: ConnectionStatus | null = null;
@@ -21,12 +20,10 @@ export default async function ConnectionPage() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6">
-			<PageHeader
-				title="Conexión con Twitch"
-				description="Con ella, Scaena recibe los eventos del canal (follows, subs, raids, bits) y se los pasa a los overlays."
-				divider={false}
-				actions={<ThemeMenu />}
+		<StudioContent>
+			<StudioPageHeader
+				title="Conexión"
+				description="Lo que Twitch le cuenta a Scaena: quién sigue, quién se suscribe, quién llega con una raid. Sin esto, los overlays se quedan callados."
 			/>
 			{status ? (
 				<ConnectionView
@@ -36,18 +33,8 @@ export default async function ConnectionPage() {
 					disconnect={disconnectEvents}
 				/>
 			) : (
-				<Unreachable />
+				<ConnectionUnreachable name={session.name} disconnect={disconnectEvents} />
 			)}
-		</div>
-	);
-}
-
-function Unreachable() {
-	return (
-		<Alert
-			color="error"
-			title="No se ha podido leer el estado en Twitch"
-			description="Twitch no ha respondido o ha rechazado las credenciales de la app. Comprueba TWITCH_CLIENT_ID y TWITCH_CLIENT_SECRET y recarga la página."
-		/>
+		</StudioContent>
 	);
 }
