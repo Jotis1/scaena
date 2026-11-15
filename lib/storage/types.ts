@@ -16,6 +16,8 @@ export interface Store {
 	incrby(key: string, n: number): Promise<number>;
 	hset(key: string, fields: Record<string, string>): Promise<void>;
 	hgetall(key: string): Promise<Record<string, string>>;
+	/** Borra esos campos del hash (`HDEL`). */
+	hdel(key: string, ...fields: string[]): Promise<void>;
 	/** Añade al stream y recorta lo anterior a `minId` (aproximado, como `MINID ~`). */
 	xadd(key: string, fields: Record<string, string>, minId?: string): Promise<string>;
 	/** Entradas con id estrictamente mayor que `after` (o desde el principio), en orden. */

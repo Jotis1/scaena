@@ -395,8 +395,8 @@ test.describe("overlays", () => {
 		await pick(page, "Just Chatting");
 		const chatting = detail(page, "Just Chatting");
 		await chatting.getByRole("textbox", { name: "Objetivo" }).fill("500");
-		await chatting.getByRole("button", { name: "Guardar meta" }).click();
-		await expect(chatting.getByText("Guardada. La pieza y las escenas ya la enseñan.")).toBeVisible();
+		await chatting.getByRole("button", { name: "Añadir meta" }).click();
+		await expect(chatting.getByText("Añadida. Ya puedes elegirla en «Qué meta sale».")).toBeVisible();
 		const preview = page.locator('[data-preview="scene/chatting"] [role="progressbar"]');
 		await expect(preview).toHaveAttribute("aria-valuemax", "500");
 		expect(String(await redis("GET", `channel:${CHANNEL_ID}:settings`))).toContain('"target":500');
@@ -569,19 +569,34 @@ test.describe("guía de uso", () => {
 // servidor de verdad, con el flujo SSE real y eventos firmados al webhook.
 test.describe("meta guardada en vivo", () => {
 	const SUBS = { type: "subs", label: "Subs del mes", target: 300 };
+	const FOLLOWS = { type: "follows", label: "Seguidores", target: 50 };
 	const bar = (page: Page) => page.getByRole("progressbar");
+	const shown = (page: Page) => page.locator("[data-goal]").getAttribute("data-goal");
 	async function tokenOf(page: Page) {
 		await page.goto("/studio/overlays");
 		return String(await redis("GET", `channel:${CHANNEL_ID}:token`));
 	}
-	const saveGoal = (page: Page, data: object) => page.request.put("/api/studio/settings", { data });
+	async function saveGoal(page: Page, data: object) {
+		const r = await page.request.put("/api/studio/settings", { data });
+		expect(r.status()).toBe(200);
+		return (await r.json()).goal as { ref: string };
+	}
+	const idOf = (g: { ref: string }) => g.ref.replace("scaena:", "");
+	async function showGoal(page: Page, show: object) {
+		const r = await page.request.put("/api/studio/settings", { data: { show } });
+		expect(r.status(), await r.text()).toBe(200);
+	}
+	const countOf = async (g: { ref: string }) =>
+		Number(await redis("GET", `channel:${CHANNEL_ID}:goal:${idOf(g)}`));
+	const card = (page: Page) => page.getByRole("region", { name: "Meta", exact: true });
+	const SUBS_TW = { ...F.GOAL_BEGIN, event: { ...F.GOAL_BEGIN.event, id: "subs-1" } };
 
 	test("cambiar el objetivo llega a la escena de juego abierta, sin recargarla", async ({
 		page,
 		context,
 	}) => {
 		const token = await tokenOf(page);
-		expect((await saveGoal(page, { goal: SUBS, current: 290 })).status()).toBe(200);
+		const subs = await saveGoal(page, { goal: SUBS, current: 290 });
 		const obs = await context.newPage();
 		await obs.setViewportSize({ width: 1920, height: 1080 });
 		await obs.goto(`/overlay/jotis_1/scene/game?token=${token}`);
@@ -591,7 +606,7 @@ test.describe("meta guardada en vivo", () => {
 		await obs.evaluate(() => {
 			(window as unknown as { sinRecargar: boolean }).sinRecargar = true;
 		});
-		await saveGoal(page, { goal: { ...SUBS, target: 350 } });
+		await saveGoal(page, { goal: { id: idOf(subs), ...SUBS, target: 350 } });
 		await expect(bar(obs)).toHaveAttribute("aria-valuemax", "350", { timeout: 10_000 });
 		await expect(bar(obs)).toHaveAttribute("aria-valuenow", "290");
 		expect(await obs.evaluate(() => (window as unknown as { sinRecargar?: boolean }).sinRecargar)).toBe(
@@ -604,7 +619,7 @@ test.describe("meta guardada en vivo", () => {
 		context,
 	}) => {
 		const token = await tokenOf(page);
-		await saveGoal(page, { goal: SUBS, current: 290 });
+		const subs = await saveGoal(page, { goal: SUBS, current: 290 });
 		const piece = await context.newPage();
 		const scene = await context.newPage();
 		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
@@ -614,55 +629,195 @@ test.describe("meta guardada en vivo", () => {
 		expect(await twitchEvent(page.request, F.SUB)).toBe(204);
 		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "291", { timeout: 10_000 });
 		await expect(bar(scene)).toHaveAttribute("aria-valuenow", "291", { timeout: 10_000 });
-		expect(Number(await redis("GET", `channel:${CHANNEL_ID}:goal`))).toBe(291);
-	});
-
-	// specs/obs-overlays, «Meta de Twitch»; specs/twitch-events, «Seguimiento de la meta de Twitch».
-	test("una meta de Twitch manda en la pieza abierta y, al acabar, vuelve la de Scaena", async ({
-		page,
-		context,
-	}) => {
-		const token = await tokenOf(page);
-		await saveGoal(page, { goal: SUBS, current: 290 });
-		const piece = await context.newPage();
-		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
-		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "290");
-		expect(await twitchEvent(page.request, F.GOAL_PROGRESS)).toBe(204);
-		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "950", { timeout: 10_000 });
-		await expect(bar(piece)).toHaveAttribute("aria-valuemax", "1000");
-		await expect(piece.getByText("Hacia los 1.000", { exact: true })).toBeVisible();
-		// El estudio dice de dónde sale.
-		await page.goto("/studio/overlays?source=goal");
-		await expect(page.getByText("Ahora sale tu meta de Twitch")).toBeVisible();
-		expect(await twitchEvent(page.request, F.GOAL_END)).toBe(204);
-		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "290", { timeout: 10_000 });
-		await expect(bar(piece)).toHaveAttribute("aria-valuemax", "300");
+		expect(await countOf(subs)).toBe(291);
 	});
 
 	test("con OBS cerrado, tres follows suman igual: al abrir la pieza sale 43", async ({ page }) => {
 		const token = await tokenOf(page);
-		await saveGoal(page, { goal: { type: "follows", label: "Seguidores", target: 50 }, current: 40 });
+		await saveGoal(page, { goal: FOLLOWS, current: 40 });
 		for (let i = 0; i < 3; i++) expect(await twitchEvent(page.request, F.FOLLOW)).toBe(204);
 		await page.goto(`/overlay/jotis_1/goal?token=${token}`);
 		await expect(page.getByText("Seguidores", { exact: true })).toBeVisible();
 		await expect(bar(page)).toHaveAttribute("aria-valuenow", "43");
 	});
+
+	// specs/obs-overlays, «Qué meta sale» y «Meta editable en el estudio».
+	test("añadir una segunda meta y elegirla en el estudio: la pieza abierta cambia sin recargar", async ({
+		page,
+		context,
+	}) => {
+		const token = await tokenOf(page);
+		await saveGoal(page, { goal: SUBS, current: 10 });
+		const piece = await context.newPage();
+		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
+		await expect(piece.getByText("Subs del mes", { exact: true })).toBeVisible();
+
+		await page.goto("/studio/overlays?source=goal");
+		const meta = card(page);
+		await meta.getByRole("button", { name: /Tipo$/ }).click();
+		await page.getByRole("option", { name: "Seguidores" }).click();
+		await meta.getByRole("textbox", { name: "Objetivo" }).fill("50");
+		await meta.getByRole("button", { name: "Añadir meta" }).click();
+		await expect(meta.getByText("Añadida. Ya puedes elegirla en «Qué meta sale».")).toBeVisible();
+
+		await meta.getByRole("button", { name: /Qué meta sale/ }).click();
+		const options = page.getByRole("option");
+		await expect(options).toHaveCount(3);
+		// Delante de cada una, el icono de dónde sale; ningún texto de prefijo.
+		await expect(page.locator('[role="option"] [data-source="scaena"]')).toHaveCount(2);
+		await expect(page.getByRole("listbox")).not.toContainText(/Scaena ·|Twitch ·/);
+		await page.getByRole("option", { name: /^Meta de seguidores/ }).click();
+		await expect(piece.getByText("Meta de seguidores", { exact: true })).toBeVisible({ timeout: 10_000 });
+		await expect(bar(piece)).toHaveAttribute("aria-valuemax", "50");
+	});
+
+	test("como mucho cinco metas, y la última no se borra", async ({ page }) => {
+		const first = await saveGoal(page, { goal: SUBS });
+		await page.goto("/studio/overlays?source=goal");
+		const meta = card(page);
+		await meta.getByRole("button", { name: /^Subs del mes.*la de por defecto/ }).click();
+		await expect(meta.getByRole("button", { name: "Borrar «Subs del mes»" })).toBeDisabled();
+		await expect(meta.getByText("Tiene que quedar al menos una meta.")).toBeVisible();
+
+		for (let i = 2; i <= 5; i++) await saveGoal(page, { goal: { ...SUBS, label: `Meta ${i}` } });
+		await page.reload();
+		await expect(card(page).getByText("Como mucho, 5 metas. Borra una para añadir otra.")).toBeVisible();
+		await expect(card(page).getByRole("button", { name: "Añadir meta" })).toHaveCount(0);
+		const sixth = await page.request.put("/api/studio/settings", { data: { goal: SUBS } });
+		expect(sixth.status()).toBe(400);
+		expect(await countOf(first)).toBe(0);
+	});
+
+	// specs/obs-overlays, «Meta de Twitch»; specs/twitch-events, «Seguimiento de la meta de Twitch».
+	test("dos metas de Twitch: la elegida no cambia con la otra y, al acabar, vuelve la de Scaena con aviso", async ({
+		page,
+		context,
+	}) => {
+		const token = await tokenOf(page);
+		await saveGoal(page, { goal: SUBS, current: 290 });
+		expect(await twitchEvent(page.request, F.GOAL_PROGRESS)).toBe(204);
+		expect(await twitchEvent(page.request, SUBS_TW)).toBe(204);
+		const piece = await context.newPage();
+		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
+		// Sin elegirla, la de Twitch no sale.
+		await expect(piece.getByText("Subs del mes", { exact: true })).toBeVisible();
+
+		await page.goto("/studio/overlays?source=goal");
+		const meta = card(page);
+		await expect(meta.getByRole("region", { name: "En Twitch" })).toContainText("Hacia los 1.000");
+		await meta.getByRole("button", { name: /Qué meta sale/ }).click();
+		await expect(page.locator('[role="option"] [data-source="twitch"]')).toHaveCount(2);
+		await page.getByRole("option", { name: /^Hacia los 1\.000/ }).click();
+		await expect(piece.getByText("Hacia los 1.000", { exact: true })).toBeVisible({ timeout: 10_000 });
+		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "950");
+
+		// El progreso de la otra no cambia la que sale.
+		const progress = { ...SUBS_TW, subscription: F.GOAL_PROGRESS.subscription };
+		expect(
+			await twitchEvent(page.request, { ...progress, event: { ...SUBS_TW.event, current_amount: 11 } }),
+		).toBe(204);
+		await piece.waitForTimeout(1500);
+		await expect(piece.getByText("Hacia los 1.000", { exact: true })).toBeVisible();
+		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "950");
+
+		expect(await twitchEvent(page.request, F.GOAL_END)).toBe(204);
+		await expect(piece.getByText("Subs del mes", { exact: true })).toBeVisible({ timeout: 10_000 });
+		await expect(bar(piece)).toHaveAttribute("aria-valuenow", "290");
+		await page.reload();
+		const ended = card(page).getByText("Tu meta de Twitch ha terminado");
+		await expect(ended).toBeVisible();
+		await card(page).getByRole("button", { name: "Entendido" }).click();
+		await expect(ended).toHaveCount(0);
+	});
+
+	// specs/obs-overlays, «Rotación de metas».
+	test("rotar dos metas cada 10 s: la pieza y la escena enseñan la misma a la vez", async ({
+		page,
+		context,
+	}) => {
+		test.setTimeout(60_000);
+		const token = await tokenOf(page);
+		const subs = await saveGoal(page, { goal: SUBS });
+		const follows = await saveGoal(page, { goal: FOLLOWS });
+		const items = [subs, follows].map((g) => ({ ref: g.ref, whenDone: "keep" }));
+		await showGoal(page, { kind: "rotate", every: 10, items });
+		const piece = await context.newPage();
+		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
+		const scene = await context.newPage();
+		await scene.setViewportSize({ width: 1920, height: 1080 });
+		await scene.goto(`/overlay/jotis_1/scene/game?token=${token}`);
+		const seen = new Set<string | null>();
+		for (let i = 0; i < 4; i++) {
+			await expect
+				.poll(async () => {
+					const [a, b] = [await shown(piece), await shown(scene)];
+					return a !== null && a === b ? a : "distintas";
+				})
+				.not.toBe("distintas");
+			seen.add(await shown(piece));
+			await piece.waitForTimeout(5_000);
+		}
+		expect([...seen].sort()).toEqual([subs.ref, follows.ref].sort());
+	});
+
+	// specs/obs-overlays, «Meta cumplida en la rotación».
+	test("«Sacar de la rotación»: al cumplirse deja de salir y queda la otra", async ({ page, context }) => {
+		test.setTimeout(60_000);
+		const token = await tokenOf(page);
+		const subs = await saveGoal(page, { goal: { ...SUBS, target: 1 } });
+		const follows = await saveGoal(page, { goal: FOLLOWS });
+		await showGoal(page, {
+			kind: "rotate",
+			every: 10,
+			items: [
+				{ ref: subs.ref, whenDone: "drop" },
+				{ ref: follows.ref, whenDone: "keep" },
+			],
+		});
+		const piece = await context.newPage();
+		await piece.goto(`/overlay/jotis_1/goal?token=${token}`);
+		await expect(piece.locator("[data-goal]")).toBeVisible();
+		expect(await twitchEvent(page.request, F.SUB)).toBe(204);
+		await expect.poll(() => shown(piece), { timeout: 12_000 }).toBe(follows.ref);
+		await piece.waitForTimeout(11_000);
+		expect(await shown(piece)).toBe(follows.ref);
+	});
+
+	test("axe sin errores en el panel de la meta, con la rotación abierta", async ({ page }) => {
+		await saveGoal(page, { goal: SUBS });
+		await saveGoal(page, { goal: FOLLOWS });
+		await page.goto("/studio/overlays?source=goal");
+		await card(page)
+			.getByRole("button", { name: /Qué meta sale/ })
+			.click();
+		await page.getByRole("option", { name: "Rotar" }).click();
+		await expect(card(page).getByRole("group", { name: "Metas que rotan" })).toBeVisible();
+		await expect(card(page).getByRole("checkbox", { name: /^Seguidores/ })).toBeChecked();
+		const axe = await new AxeBuilder({ page }).analyze();
+		expect(axe.violations.map((v) => v.id)).toEqual([]);
+	});
 });
 
 test.describe("tarjeta de la meta", () => {
-	test("guardar seguidores, 50 y «Llevas» 10 cambia la vista previa de la escena, y al recargar sigue", async ({
+	const settings = async () =>
+		JSON.parse(String(await redis("GET", `channel:${CHANNEL_ID}:settings`))) as {
+			goals: { id: string }[];
+		};
+
+	test("añadir seguidores, 50 y «Llevas» 10 cambia la vista previa de la escena, y al recargar sigue", async ({
 		page,
 	}) => {
 		await page.goto("/studio/overlays?source=goal");
 		const card = page.getByRole("region", { name: "Meta", exact: true });
-		await card.getByRole("button", { name: /Tipo/ }).click();
+		await card.getByRole("button", { name: /Tipo$/ }).click();
 		await page.getByRole("option", { name: "Seguidores" }).click();
 		await expect(card.getByRole("textbox", { name: "Texto" })).toHaveValue("Meta de seguidores");
 		await card.getByRole("textbox", { name: "Objetivo" }).fill("50");
 		await card.getByRole("textbox", { name: "Llevas" }).fill("10");
-		await card.getByRole("button", { name: "Guardar meta" }).click();
-		await expect(card.getByText("Guardada. La pieza y las escenas ya la enseñan.")).toBeVisible();
-		expect(Number(await redis("GET", `channel:${CHANNEL_ID}:goal`))).toBe(10);
+		await card.getByRole("button", { name: "Añadir meta" }).click();
+		await expect(card.getByText("Añadida. Ya puedes elegirla en «Qué meta sale».")).toBeVisible();
+		const [saved] = (await settings()).goals;
+		expect(Number(await redis("GET", `channel:${CHANNEL_ID}:goal:${saved?.id}`))).toBe(10);
 
 		await page
 			.getByRole("tablist", { name: "Tipo de fuente" })
@@ -675,16 +830,20 @@ test.describe("tarjeta de la meta", () => {
 
 		await page.goto("/studio/overlays?source=goal");
 		const again = page.getByRole("region", { name: "Meta", exact: true });
-		await expect(again.getByRole("textbox", { name: "Texto" })).toHaveValue("Meta de seguidores");
-		await expect(again.getByRole("textbox", { name: "Objetivo" })).toHaveValue("50");
-		await expect(again.getByRole("textbox", { name: "Llevas" })).toHaveValue("10");
+		await expect(again.getByRole("button", { name: /Qué meta sale/ })).toContainText(
+			"Meta de seguidores",
+		);
+		await again.getByRole("button", { name: /^Meta de seguidores.*la de por defecto/ }).click();
+		await expect(again.getByRole("textbox", { name: "Texto" }).first()).toHaveValue("Meta de seguidores");
+		await expect(again.getByRole("textbox", { name: "Objetivo" }).first()).toHaveValue("50");
+		await expect(again.getByRole("textbox", { name: "Llevas" }).first()).toHaveValue("10");
 	});
 
 	test("objetivo 0: no se guarda y lo dice en el campo", async ({ page }) => {
 		await page.goto("/studio/overlays?source=goal");
 		const card = page.getByRole("region", { name: "Meta", exact: true });
 		await card.getByRole("textbox", { name: "Objetivo" }).fill("0");
-		await card.getByRole("button", { name: "Guardar meta" }).click();
+		await card.getByRole("button", { name: "Añadir meta" }).click();
 		await expect(card.getByText("El objetivo tiene que ser mayor que cero.")).toBeVisible();
 		expect(await redis("GET", `channel:${CHANNEL_ID}:settings`)).toBeNull();
 	});
@@ -697,6 +856,7 @@ test.describe("capturas del estudio", () => {
 	const PAGES = [
 		["overlays-alertas", "/studio/overlays?source=alerts"],
 		["overlays-juego", "/studio/overlays?source=game"],
+		["overlays-meta", "/studio/overlays?source=goal"],
 		["guia", "/studio/guide"],
 		["recursos", "/studio/assets"],
 		["conexion", "/studio/connection"],
@@ -709,6 +869,30 @@ test.describe("capturas del estudio", () => {
 			test(`estudio en ${scheme} a ${w} px`, async ({ page, browser }) => {
 				await page.emulateMedia({ colorScheme: scheme });
 				await page.setViewportSize({ width: w, height: h });
+				// La meta con algo dentro: dos metas propias, una de Twitch y la rotación.
+				const put = async (data: object) =>
+					(await (await page.request.put("/api/studio/settings", { data })).json()) as {
+						goal: { ref: string };
+					};
+				const a = await put({
+					goal: { type: "subs", label: "Subs del mes", target: 300 },
+					current: 284,
+				});
+				const b = await put({
+					goal: { type: "follows", label: "Hacia los 2.000", target: 2000 },
+					current: 1210,
+				});
+				await twitchEvent(page.request, F.GOAL_PROGRESS);
+				await put({
+					show: {
+						kind: "rotate",
+						every: 20,
+						items: [
+							{ ref: a.goal.ref, whenDone: "drop" },
+							{ ref: b.goal.ref, whenDone: "keep" },
+						],
+					},
+				});
 				for (const [name, path] of PAGES) {
 					await page.goto(path);
 					await page.waitForLoadState("networkidle");

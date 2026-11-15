@@ -21,7 +21,7 @@ export function GameScene({ profile, o, width }: { profile: Profile; o: SceneOpt
 				width={width}
 				status={<LiveStatusPill channel={channel} viewers={o.viewers} />}
 				alerts={<LiveAlerts message={o.message} durationMs={7000} />}
-				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} /> : null}
+				goal={o.goal ? <LiveGoal {...o.goalProps} width={400} animate={o.animate} /> : null}
 				chat={
 					o.chat ? (
 						<LiveChat

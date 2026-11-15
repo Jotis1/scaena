@@ -1,23 +1,24 @@
-import { readGoal, saveGoal } from "@/lib/alerts/saved-goal";
 import { effectivePhrases, readSettings, SettingsError, saveSettings } from "@/lib/alerts/settings";
 import { loadMainProfile } from "@/lib/profile";
 import { store } from "@/lib/storage/redis";
+import { deleteGoalRequest, putGoals, readGoalPanel } from "@/lib/studio/goal-settings";
 import { requireApiSession } from "@/lib/studio/session";
 
-// Frases de alerta y meta guardada del canal de la sesión (design.md, decisión 9; specs/obs-overlays, «Meta editable
-// en el estudio»). Un `PUT` con `goal` guarda la meta; uno con `alerts`, las frases.
+// Frases de alerta y metas del canal de la sesión (design.md, decisión 9; specs/obs-overlays, «Meta editable en el
+// estudio» y «Qué meta sale»; design.md del cambio goal-selector-and-rotation, decisión 8). Un `PUT` con `goal`,
+// `show` o `dismissEnded` es de las metas (`lib/studio/goal-settings.ts`); uno con `alerts`, de las frases.
 export async function GET(request: Request) {
 	const session = await requireApiSession(request);
 	if (session instanceof Response) return session;
 	const s = store();
-	const [settings, goal] = await Promise.all([
+	const [settings, goals] = await Promise.all([
 		readSettings(s, session.channelId),
-		readGoal(s, session.channelId),
+		readGoalPanel(s, session.channelId),
 	]);
 	return Response.json({
 		alerts: effectivePhrases(await loadMainProfile(), settings),
 		saved: settings.alerts,
-		goal,
+		...goals,
 	});
 }
 
@@ -30,9 +31,9 @@ export async function PUT(request: Request) {
 	} catch {
 		return Response.json({ error: "El cuerpo tiene que ser JSON." }, { status: 400 });
 	}
+	const goals = await putGoals(store(), session.channelId, body);
+	if (goals) return Response.json(goals.body, { status: goals.status });
 	try {
-		if (body && typeof body === "object" && "goal" in body)
-			return Response.json({ goal: await saveGoal(store(), session.channelId, body) });
 		const alerts = await saveSettings(store(), session.channelId, await loadMainProfile(), body);
 		return Response.json({ alerts });
 	} catch (e) {
@@ -40,4 +41,11 @@ export async function PUT(request: Request) {
 			return Response.json({ error: e.message, fields: e.fields }, { status: 400 });
 		throw e;
 	}
+}
+
+export async function DELETE(request: Request) {
+	const session = await requireApiSession(request);
+	if (session instanceof Response) return session;
+	const r = await deleteGoalRequest(store(), session.channelId, new URL(request.url));
+	return Response.json(r.body, { status: r.status });
 }

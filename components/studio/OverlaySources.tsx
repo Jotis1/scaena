@@ -25,6 +25,8 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CAMERA_HOLE, ChattingLayout, GameLayout } from "@/components/overlay/scenes/layouts";
 import { SCENE_ROWS } from "@/components/overlay/scenes/params";
 import { goalUnit } from "@/lib/alerts/goal";
+import { clockOffset } from "@/lib/alerts/goal-pick";
+import type { GoalOverview } from "@/lib/alerts/goal-view";
 import { type AlertPhrases, fillPhrase } from "@/lib/alerts/phrase";
 import type { GoalState } from "@/lib/alerts/saved-goal";
 import { CANVAS_IDS, type CanvasId, canvasById, canvasLabel, DEFAULT_CANVAS } from "@/lib/overlay/canvas";
@@ -45,13 +47,14 @@ import {
 } from "@/lib/studio/overlay-urls";
 import { TEST_ALERTS } from "@/lib/studio/test-alerts";
 import type { AlertType } from "@/lib/twitch/eventsub/event";
+import { useCurrentGoal } from "../overlay/LiveGoal";
 import { DEFAULT_GOAL } from "./overlays/GoalEditor";
+import { GoalManager } from "./overlays/GoalManager";
 import {
 	AlertOptions,
 	CameraOptions,
 	ChatOptions,
 	EventOptions,
-	GoalOptions,
 	StatusOptions,
 } from "./overlays/PieceOptions";
 import { TokenField } from "./overlays/TokenField";
@@ -72,10 +75,8 @@ export interface OverlaySourcesProps {
 	footer: string;
 	scenes: Record<"starting" | "brb" | "ending" | "offline", SceneCopy>;
 	phrases: AlertPhrases;
-	/** La meta guardada en Scaena, con su cuenta; `null` si aún no hay. */
-	goal: GoalState | null;
-	/** La meta activa en Twitch, que manda sobre la de Scaena (specs/obs-overlays, «Meta de Twitch»). */
-	twitchGoal: GoalState | null;
+	/** Las metas de Scaena y de Twitch, qué sale y lo que pintan los overlays (specs/obs-overlays, «Qué meta sale»). */
+	goals: GoalOverview;
 	/** La fuente de `?source=` (o de `?tab=scenes`). */
 	source: SourceId;
 	/** El lienzo de las escenas, de `?canvas=`. */
@@ -181,7 +182,10 @@ export function OverlaySources(p: OverlaySourcesProps) {
 		type: "sub",
 		phrases: p.phrases,
 	});
-	const [goal, setGoal] = useState<GoalState>(p.goal ?? DEFAULT_GOAL);
+	const [goals, setGoals] = useState<GoalOverview>(p.goals);
+	// La meta que se está escribiendo, para la vista previa; `null` sin nada a medias.
+	const [draftGoal, setDraftGoal] = useState<GoalState | null>(null);
+	const [goalOffset] = useState(() => (p.goals.view ? clockOffset(p.goals.view, Date.now()) : 0));
 	const [opts, setOpts] = useState<Record<SourceKind, SourceOptions>>({
 		chat: { translucent: true, animate: true },
 		alerts: { message: true },
@@ -225,7 +229,9 @@ export function OverlaySources(p: OverlaySourcesProps) {
 	const def = SOURCES[sel];
 	const size = scene ? canvasLabel(canvas) : sel === "camera" ? (o.ratio ?? "16:9") : def.size;
 	const guide = `/studio/guide${canvasId === DEFAULT_CANVAS ? "" : `?canvas=${canvasId}`}#${guideAnchor(sel)}`;
-	const shown = p.twitchGoal ?? goal;
+	// La vista previa enseña lo que sale en OBS (la fija o la del turno de la rotación) o lo que se está escribiendo.
+	const picked = useCurrentGoal(goals.view, goalOffset);
+	const shown = draftGoal ?? picked ?? DEFAULT_GOAL;
 	const goalPiece = (
 		<StreamGoal
 			label={shown.label}
@@ -414,9 +420,7 @@ export function OverlaySources(p: OverlaySourcesProps) {
 			onPreview={(type, draft) => setAlertPreview({ type, phrases: draft })}
 		/>
 	);
-	const goalOptions = () => (
-		<GoalOptions goal={p.goal} twitchGoal={p.twitchGoal} onSaved={setGoal} onDraft={setGoal} />
-	);
+	const goalOptions = () => <GoalManager panel={goals} onChange={setGoals} onDraft={setDraftGoal} />;
 
 	const options: Record<SourceId, () => ReactNode> = {
 		chat: () => <ChatOptions o={o} set={set} />,

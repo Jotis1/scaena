@@ -1,7 +1,8 @@
 // Webhook de EventSub (specs/twitch-events; design.md, decisión 3). Separado de la ruta para probarlo con el
 // almacén en memoria.
-import { countGoalEvent, publishGoal } from "../../alerts/saved-goal";
-import { clearTwitchGoal, saveTwitchGoal } from "../../alerts/twitch-goal";
+import { publishGoalView } from "../../alerts/goal-view";
+import { countGoalEvent } from "../../alerts/saved-goal";
+import { endTwitchGoal, saveTwitchGoal } from "../../alerts/twitch-goal";
 import { keys } from "../../redis/keys";
 import type { Store } from "../../storage/types";
 import { type Notification, normalize } from "./normalize";
@@ -81,16 +82,18 @@ export async function handleWebhook(headers: Headers, body: string, ctx: Webhook
 		// La meta guardada suma aquí, una sola vez por evento: ya se han descartado los reintentos. Si falla, la
 		// alerta ya ha salido y Twitch no debe reintentar; la cuenta se corrige a mano desde el estudio.
 		try {
-			await countGoalEvent(ctx.store, r.event);
+			// Cada meta de su tipo suma, salga o no; los overlays reciben la vista al día.
+			if ((await countGoalEvent(ctx.store, r.event, now)).length)
+				await publishGoalView(ctx.store, r.event.channelId, now);
 		} catch (e) {
 			console.error("No se ha podido sumar el evento a la meta:", e);
 		}
 	} else if (r.kind === "goal") {
-		// Meta de Twitch: cifras absolutas, así que un aviso repetido no suma dos veces. Al acabar se borra (solo si es
-		// la misma) y vuelve a verse la de Scaena.
-		if (r.phase === "end") await clearTwitchGoal(ctx.store, r.channelId, r.goal.id);
+		// Meta de Twitch: cifras absolutas, así que un aviso repetido no suma dos veces. Cada aviso toca solo su meta;
+		// al acabar se borra esa y, si era la elegida, vuelve la de Scaena por defecto.
+		if (r.phase === "end") await endTwitchGoal(ctx.store, r.channelId, r.goal.id);
 		else await saveTwitchGoal(ctx.store, r.channelId, r.goal);
-		await publishGoal(ctx.store, r.channelId);
+		await publishGoalView(ctx.store, r.channelId, now);
 	} else if (r.kind === "status") {
 		// Empieza o acaba el directo: la próxima consulta del estado va a Twitch (specs/live-status).
 		await ctx.store.del(keys.channel(r.channelId, "status"));

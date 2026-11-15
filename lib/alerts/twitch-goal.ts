@@ -1,10 +1,19 @@
-// Meta del creador activa en Twitch (specs/twitch-events, «Seguimiento de la meta de Twitch»; design.md del cambio
-// studio-sidebar-twitch-goals-editable-profile, decisión 6). Llega por EventSub (`channel.goal.*`) y por Helix
-// (`GET /helix/goals`) y se guarda tal cual: Twitch da cifras absolutas, así que un aviso repetido no suma dos veces.
+// Metas del creador activas en Twitch (specs/twitch-events, «Seguimiento de la meta de Twitch»; design.md del cambio
+// goal-selector-and-rotation, decisiones 2 y 6). Llegan por EventSub (`channel.goal.*`) y por Helix
+// (`GET /helix/goals`) y se guardan tal cual, cada una por su id en un hash: Twitch da cifras absolutas, así que un
+// aviso repetido no suma dos veces, y dos avisos de metas distintas no se pisan.
 import { keys } from "../redis/keys";
 import type { Store } from "../storage/types";
 import { GOAL_LABELS, type GoalType } from "./goal";
-import type { GoalState } from "./saved-goal";
+import {
+	forgetDone,
+	type GoalState,
+	readGoalSettings,
+	syncDone,
+	twitchRef,
+	updateGoalSettings,
+	withoutRef,
+} from "./saved-goal";
 
 /** Tipos de meta de Twitch: https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#goals-event */
 export const TWITCH_GOAL_TYPES = [
@@ -35,7 +44,7 @@ export interface TwitchGoal {
 	description: string;
 	current: number;
 	target: number;
-	/** Cuándo empezó (ms): con varias activas, vale la más reciente. */
+	/** Cuándo empezó (ms): las metas de Twitch se ofrecen en ese orden. */
 	startedAt: number;
 }
 
@@ -69,31 +78,79 @@ export function twitchGoalState(g: TwitchGoal): GoalState {
 		target: Math.max(1, g.target),
 		unit,
 		current: g.current,
+		ref: twitchRef(g.id),
 		source: "twitch",
 	};
 }
 
-const key = (channelId: string) => keys.channel(channelId, "twitch-goal");
+const key = (channelId: string) => keys.channel(channelId, "twitch-goals");
 
-export async function readTwitchGoal(store: Store, channelId: string): Promise<TwitchGoal | null> {
-	const raw = await store.get<TwitchGoal>(key(channelId));
-	return raw && typeof raw === "object" && isType(raw.twitchType) ? raw : null;
+const asGoal = (v: unknown): TwitchGoal | null => {
+	// Upstash devuelve ya leído el JSON de cada campo; la memoria y el Redis de los tests, el texto.
+	let g: unknown = v;
+	if (typeof v === "string")
+		try {
+			g = JSON.parse(v);
+		} catch {
+			return null;
+		}
+	if (!g || typeof g !== "object") return null;
+	const t = g as TwitchGoal;
+	return typeof t.id === "string" && isType(t.twitchType) ? t : null;
+};
+
+/** Las metas de Twitch activas, de la que empezó antes a la que empezó después. */
+export async function readTwitchGoals(store: Store, channelId: string): Promise<TwitchGoal[]> {
+	const raw = await store.hgetall(key(channelId));
+	return Object.values(raw)
+		.map(asGoal)
+		.filter((g): g is TwitchGoal => g !== null)
+		.sort((a, b) => a.startedAt - b.startedAt || a.id.localeCompare(b.id));
 }
 
+/** Guarda o actualiza una meta (solo la suya) y apunta si ha llegado a su objetivo. */
 export async function saveTwitchGoal(store: Store, channelId: string, g: TwitchGoal): Promise<void> {
-	await store.set(key(channelId), g);
+	await store.hset(key(channelId), { [g.id]: JSON.stringify(g) });
+	await syncDone(store, channelId, twitchRef(g.id), g.current, Math.max(1, g.target));
 }
 
-/** Borra la meta de Twitch guardada; con `id`, solo si es esa (un final atrasado no borra la siguiente). */
-export async function clearTwitchGoal(store: Store, channelId: string, id?: string): Promise<void> {
-	if (id !== undefined) {
-		const saved = await readTwitchGoal(store, channelId);
-		if (saved && saved.id !== id) return;
-	}
-	await store.del(key(channelId));
+/**
+ * Una meta de Twitch ha terminado: se borra solo esa. Si era la elegida, vuelve la meta de Scaena por defecto y se
+ * guarda su texto para que el estudio lo avise; si estaba en la rotación, sale de ella (specs/obs-overlays, «Meta de
+ * Twitch» y «Rotación de metas»).
+ */
+export async function endTwitchGoal(store: Store, channelId: string, id: string): Promise<void> {
+	const ref = twitchRef(id);
+	const saved = (await readTwitchGoals(store, channelId)).find((g) => g.id === id);
+	await store.hdel(key(channelId), id);
+	await forgetDone(store, channelId, ref);
+	const { show } = await readGoalSettings(store, channelId);
+	if (!show) return;
+	const chosen = show.kind === "one" && show.ref === ref;
+	const rotating = show.kind === "rotate" && show.items.some((i) => i.ref === ref);
+	if (!chosen && !rotating) return;
+	await updateGoalSettings(store, channelId, (s) => {
+		const next = { ...s };
+		const left = withoutRef(s.show, ref);
+		if (left) next.show = left;
+		else delete next.show;
+		if (chosen) next.endedTwitch = saved ? twitchGoalState(saved).label : "Tu meta de Twitch";
+		return next;
+	});
 }
 
-/** De varias metas activas, la más reciente; `null` sin ninguna. */
-export function latestGoal(goals: TwitchGoal[]): TwitchGoal | null {
-	return goals.reduce<TwitchGoal | null>((a, g) => (!a || g.startedAt > a.startedAt ? g : a), null);
+/**
+ * Sustituye las metas guardadas por las que hay en Twitch (al conectar y al abrir el estudio). Las que ya no están se
+ * tratan como un final. La clave antigua de la 0.3.0, con una sola meta, se borra.
+ */
+export async function replaceTwitchGoals(
+	store: Store,
+	channelId: string,
+	goals: TwitchGoal[],
+): Promise<void> {
+	const ids = new Set(goals.map((g) => g.id));
+	for (const old of await readTwitchGoals(store, channelId))
+		if (!ids.has(old.id)) await endTwitchGoal(store, channelId, old.id);
+	for (const g of goals) await saveTwitchGoal(store, channelId, g);
+	await store.del(keys.channel(channelId, "twitch-goal"));
 }

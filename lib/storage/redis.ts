@@ -27,6 +27,9 @@ export function redisStore(r: Redis): Store {
 		async hgetall(key) {
 			return (await r.hgetall<Record<string, string>>(key)) ?? {};
 		},
+		async hdel(key, ...fields) {
+			if (fields.length) await r.hdel(key, ...fields);
+		},
 		async xadd(key, fields, minId) {
 			return minId
 				? r.xadd(key, "*", fields, { trim: { type: "MINID", threshold: minId, comparison: "~" } })

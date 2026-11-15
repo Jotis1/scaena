@@ -1,6 +1,7 @@
-// Lo que recibe un overlay nada más conectar (design.md, decisión 4): las frases de las alertas y, si hay meta, la
-// que se ve (la de Twitch o, sin ella, la guardada) con la cuenta al día. El overlay pinta ese valor; no lo recalcula con los eventos reproducidos.
-import { GOAL_EVENT, resolveGoal } from "../alerts/saved-goal";
+// Lo que recibe un overlay nada más conectar (design.md, decisión 4): las frases de las alertas y, si hay metas, la
+// vista de la meta (la elegida o la rotación) con las cuentas al día. El overlay pinta eso; no lo recalcula con los
+// eventos reproducidos.
+import { GOAL_VIEW_EVENT, resolveGoalView } from "../alerts/goal-view";
 import { effectivePhrases, readSettings, SETTINGS_EVENT } from "../alerts/settings";
 import type { Profile } from "../profile/schema";
 import type { Store } from "../storage/types";
@@ -10,12 +11,12 @@ export async function initialEvents(
 	channelId: string,
 	profile: Profile,
 ): Promise<{ event: string; data: string }[]> {
-	const [settings, goal] = await Promise.all([
+	const [settings, view] = await Promise.all([
 		readSettings(store, channelId),
-		resolveGoal(store, channelId),
+		resolveGoalView(store, channelId),
 	]);
 	return [
 		{ event: SETTINGS_EVENT, data: JSON.stringify({ alerts: effectivePhrases(profile, settings) }) },
-		...(goal ? [{ event: GOAL_EVENT, data: JSON.stringify(goal) }] : []),
+		...(view ? [{ event: GOAL_VIEW_EVENT, data: JSON.stringify(view) }] : []),
 	];
 }
